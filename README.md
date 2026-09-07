@@ -1,6 +1,6 @@
 # SoundSniff
 
-**[Türkçe için tıklayın](README.tr.md)**
+**[Türkçe](README.tr.md)**
 
 Shazam-style music recognition add-on for Firefox (and forks). Finds the song playing in your tab. No sign-up, no API key required.
 
