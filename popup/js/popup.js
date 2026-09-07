@@ -1,462 +1,559 @@
 (function () {
   'use strict';
 
-  // DOM
-  const btnListen = document.getElementById('btn-listen');
-  const btnHistory = document.getElementById('btn-history');
-  const btnSettings = document.getElementById('btn-settings');
-  const btnBackHistory = document.getElementById('btn-back-history');
-  const btnBackSettings = document.getElementById('btn-back-settings');
-  const btnClearHistory = document.getElementById('btn-clear-history');
-  const btnClearHistorySettings = document.getElementById('btn-clear-history-settings');
+  var DEFAULT_TOKEN = 'test';
+  var MAX_HISTORY = 50;
 
-  const screenMain = document.getElementById('screen-main');
-  const screenHistory = document.getElementById('screen-history');
-  const screenSettings = document.getElementById('screen-settings');
+  // ---------- DOM ----------
+  function $(id) { return document.getElementById(id); }
 
-  const albumArt = document.getElementById('album-art');
-  const songInfo = document.getElementById('song-info');
-  const songArtist = document.getElementById('song-artist');
-  const songTitle = document.getElementById('song-title');
-  const idleMessage = document.getElementById('idle-message');
-  const searchingMessage = document.getElementById('searching-message');
-  const noResultMessage = document.getElementById('no-result-message');
-  const errorMessage = document.getElementById('error-message');
-  const errorText = document.getElementById('error-text');
+  var app = $('app');
+  var btnListen = $('btn-listen');
+  var btnHistory = $('btn-history');
+  var btnSettings = $('btn-settings');
+  var btnBackHistory = $('btn-back-history');
+  var btnBackSettings = $('btn-back-settings');
+  var btnClearHistory = $('btn-clear-history');
+  var btnClearHistorySettings = $('btn-clear-history-settings');
 
-  const apiTokenInput = document.getElementById('api-token-input');
-  const recordingLength = document.getElementById('recording-length');
-  const recordingLengthValue = document.getElementById('recording-length-value');
-  const historyList = document.getElementById('history-list');
+  var screenMain = $('screen-main');
+  var screenHistory = $('screen-history');
+  var screenSettings = $('screen-settings');
 
-  let isRecording = false;
-  let mediaRecorder = null;
-  let audioChunks = [];
-  let history = [];
+  var statusPill = $('status-pill');
+  var statusDot = $('status-dot');
+  var statusText = $('status-text');
+  var disc = $('disc');
+  var discImg = $('disc-img');
+  var discFallback = $('disc-fallback');
+  var eq = $('eq');
+  var songArtist = $('song-artist');
+  var songTitle = $('song-title');
+  var songMeta = $('song-meta');
+  var songLinks = $('song-links');
+  var btnRetry = $('btn-retry');
+  var backendNote = $('backend-note');
 
-  // Init
-  async function init() {
-    const data = await browser.storage.local.get(['history', 'apiToken', 'recordingLength']);
+  var apiTokenInput = $('api-token-input');
+  var recordingLength = $('recording-length');
+  var recordingLengthValue = $('recording-length-value');
+  var historyList = $('history-list');
+  var settingsSaved = $('settings-saved');
 
-    if (data.history) {
-      history = data.history;
-    }
-    if (data.apiToken) {
-      apiTokenInput.value = data.apiToken;
-    }
-    if (data.recordingLength) {
-      recordingLength.value = data.recordingLength;
-      recordingLengthValue.textContent = data.recordingLength + 's';
-    }
+  // ---------- State ----------
+  var uiState = 'idle'; // idle | listening | working | result | noresult | error
+  var isRecording = false;
+  var mediaRecorder = null;
+  var audioChunks = [];
+  var recordTimer = null;
+  var errorTimer = null;
+  var history = [];
+  var lastBackend = '';
 
-    renderHistory();
+  // ---------- Init ----------
+  function init() {
+    browser.storage.local.get(['history', 'apiToken', 'recordingLength'])
+      .then(function (data) {
+        if (Array.isArray(data.history)) history = data.history.slice(0, MAX_HISTORY);
+        if (data.apiToken) apiTokenInput.value = data.apiToken;
+        var len = parseInt(data.recordingLength, 10);
+        if (len >= 5 && len <= 30) {
+          recordingLength.value = String(len);
+          recordingLengthValue.textContent = len + 's';
+        }
+        renderHistory();
+      })
+      .catch(function (err) {
+        console.error('SoundSniff init error:', err);
+      });
+
+    setState('idle');
   }
 
-  // Screen navigation
+  // ---------- Navigation ----------
   function showScreen(screen) {
-    [screenMain, screenHistory, screenSettings].forEach(s => s.classList.remove('active'));
+    [screenMain, screenHistory, screenSettings].forEach(function (s) {
+      s.classList.remove('active');
+    });
     screen.classList.add('active');
   }
 
-  // Recording length slider
-  recordingLength.addEventListener('input', function () {
-    recordingLengthValue.textContent = this.value + 's';
-  });
-
-  // Navigation
-  btnHistory.addEventListener('click', () => {
-    showScreen(screenHistory);
-  });
-
-  btnSettings.addEventListener('click', () => {
-    showScreen(screenSettings);
-  });
-
-  btnBackHistory.addEventListener('click', () => {
-    showScreen(screenMain);
-  });
-
-  btnBackSettings.addEventListener('click', () => {
+  btnHistory.addEventListener('click', function () { showScreen(screenHistory); });
+  btnSettings.addEventListener('click', function () { showScreen(screenSettings); });
+  btnBackHistory.addEventListener('click', function () { showScreen(screenMain); });
+  btnBackSettings.addEventListener('click', function () {
     saveSettings();
     showScreen(screenMain);
   });
 
-  // Clear history
-  btnClearHistory.addEventListener('click', clearHistory);
-  btnClearHistorySettings.addEventListener('click', clearHistory);
+  // ---------- Settings ----------
+  recordingLength.addEventListener('input', function () {
+    recordingLengthValue.textContent = this.value + 's';
+  });
+
+  recordingLength.addEventListener('change', saveSettings);
+  apiTokenInput.addEventListener('change', saveSettings);
+
+  function saveSettings() {
+    var len = parseInt(recordingLength.value, 10);
+    if (!(len >= 5 && len <= 30)) len = 10;
+    browser.storage.local.set({
+      apiToken: apiTokenInput.value.trim(),
+      recordingLength: len
+    }).then(function () {
+      settingsSaved.classList.add('show');
+      setTimeout(function () { settingsSaved.classList.remove('show'); }, 1600);
+    }).catch(function (err) {
+      console.error('SoundSniff settings error:', err);
+    });
+  }
 
   function clearHistory() {
     history = [];
     browser.storage.local.set({ history: [] });
     renderHistory();
   }
+  btnClearHistory.addEventListener('click', clearHistory);
+  btnClearHistorySettings.addEventListener('click', clearHistory);
 
-  // Save settings
-  function saveSettings() {
-    browser.storage.local.set({
-      apiToken: apiTokenInput.value.trim(),
-      recordingLength: parseInt(recordingLength.value)
-    });
-  }
+  // ---------- State machine ----------
+  var STRINGS = {
+    idle: 'Dinlemek için dokun',
+    listening: 'Dinleniyor…',
+    working: 'Tanımlanıyor…',
+    result: 'Bulundu',
+    noresult: 'Eşleşme yok',
+    error: 'Hata'
+  };
 
-  // Show states
-  function showState(state) {
-    idleMessage.style.display = 'none';
-    searchingMessage.style.display = 'none';
-    noResultMessage.style.display = 'none';
-    errorMessage.style.display = 'none';
+  function setState(next, detail) {
+    uiState = next;
+    app.setAttribute('data-state', next);
 
-    switch (state) {
-      case 'idle':
-        idleMessage.style.display = '';
-        break;
-      case 'searching':
-        searchingMessage.style.display = 'flex';
-        break;
-      case 'no-result':
-        noResultMessage.style.display = 'flex';
-        break;
-      case 'error':
-        errorMessage.style.display = 'flex';
-        break;
+    statusText.textContent = (detail && detail.status) || STRINGS[next] || '';
+    backendNote.textContent = (detail && detail.backend) || '';
+
+    if (next === 'listening' || next === 'working') {
+      btnListen.classList.add('busy');
+      disc.classList.add('spinning');
+      eq.classList.add('on');
+    } else {
+      btnListen.classList.remove('busy');
+      disc.classList.remove('spinning');
+      eq.classList.remove('on');
+    }
+
+    if (next === 'listening' || next === 'working' || next === 'result') {
+      statusDot.classList.add('live');
+    } else {
+      statusDot.classList.remove('live');
+    }
+
+    if (next === 'noresult' || next === 'error') {
+      btnRetry.classList.remove('hidden');
+    } else {
+      btnRetry.classList.add('hidden');
+    }
+
+    if (errorTimer) { clearTimeout(errorTimer); errorTimer = null; }
+    if (next === 'error') {
+      errorTimer = setTimeout(function () {
+        if (uiState === 'error') setState('idle');
+      }, 4200);
     }
   }
 
-  // Listen button
-  btnListen.addEventListener('click', async () => {
+  // ---------- Recording ----------
+  btnListen.addEventListener('click', function () {
     if (isRecording) {
       stopRecording();
+    } else if (uiState === 'working') {
+      return;
     } else {
-      await startRecording();
+      resetResultView();
+      startRecording();
     }
   });
 
-  async function startRecording() {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: false,
-          noiseSuppression: false,
-          autoGainControl: false
-        }
-      });
+  btnRetry.addEventListener('click', function () {
+    resetResultView();
+    startRecording();
+  });
 
-      audioChunks = [];
-      const mimeType = detectMimeType();
-      mediaRecorder = new MediaRecorder(stream, { mimeType });
-
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data && e.data.size > 0) {
-          audioChunks.push(e.data);
-        }
-      };
-
-      mediaRecorder.onstop = () => {
-        stream.getTracks().forEach(t => t.stop());
-        processRecording();
-      };
-
-      mediaRecorder.start();
-      isRecording = true;
-
-      btnListen.classList.add('recording');
-      albumArt.classList.add('active');
-      showState('searching');
-
-      const recordLength = parseInt(recordingLength.value) * 1000;
-      setTimeout(() => {
-        if (isRecording) {
-          stopRecording();
-        }
-      }, recordLength);
-
-    } catch (err) {
-      console.error('Mic error:', err);
-      showError('Microphone access denied');
-    }
-  }
-
-  function stopRecording() {
-    if (mediaRecorder && mediaRecorder.state === 'recording') {
-      mediaRecorder.stop();
-    }
-    isRecording = false;
-    btnListen.classList.remove('recording');
+  function resetResultView() {
+    songArtist.textContent = '';
+    songTitle.textContent = '';
+    songMeta.textContent = '';
+    songLinks.innerHTML = '';
+    songLinks.classList.add('hidden');
+    btnRetry.classList.add('hidden');
+    setArtwork(null);
   }
 
   function detectMimeType() {
-    const types = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/ogg'];
-    for (const type of types) {
-      if (MediaRecorder.isTypeSupported(type)) return type;
+    var types = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/ogg'];
+    for (var i = 0; i < types.length; i++) {
+      try {
+        if (window.MediaRecorder && MediaRecorder.isTypeSupported(types[i])) return types[i];
+      } catch (e) { /* ignore */ }
     }
     return '';
   }
 
-  async function processRecording() {
-    if (audioChunks.length === 0) {
-      showError('No audio recorded');
+  function startRecording() {
+    if (typeof navigator === 'undefined' ||
+        !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setState('error', { status: 'Bu tarayıcı mikrofon kaydını desteklemiyor.' });
+      return;
+    }
+    if (typeof window.MediaRecorder === 'undefined') {
+      setState('error', { status: 'Bu tarayıcı ses kaydını desteklemiyor.' });
       return;
     }
 
-    const blob = new Blob(audioChunks, { type: audioChunks[0].type || 'audio/webm' });
+    navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+    }).then(function (stream) {
+      audioChunks = [];
+      var mimeType = detectMimeType();
+      try {
+        mediaRecorder = mimeType
+          ? new MediaRecorder(stream, { mimeType: mimeType })
+          : new MediaRecorder(stream);
+      } catch (err) {
+        stream.getTracks().forEach(function (t) { t.stop(); });
+        setState('error', { status: 'Kayıt başlatılamadı.' });
+        return;
+      }
+
+      mediaRecorder.ondataavailable = function (e) {
+        if (e.data && e.data.size > 0) audioChunks.push(e.data);
+      };
+      mediaRecorder.onstop = function () {
+        stream.getTracks().forEach(function (t) { t.stop(); });
+        processRecording();
+      };
+      mediaRecorder.onerror = function () {
+        try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {}
+        isRecording = false;
+        setState('error', { status: 'Kayıt sırasında hata oldu.' });
+      };
+
+      try {
+        mediaRecorder.start();
+      } catch (err) {
+        setState('error', { status: 'Kayıt başlatılamadı.' });
+        return;
+      }
+
+      isRecording = true;
+      setState('listening');
+
+      var secs = parseInt(recordingLength.value, 10);
+      if (!(secs >= 5 && secs <= 30)) secs = 10;
+      if (recordTimer) clearTimeout(recordTimer);
+      recordTimer = setTimeout(function () {
+        if (isRecording) stopRecording();
+      }, secs * 1000);
+    }).catch(function (err) {
+      var msg = 'Mikrofon izni gerekli. Adres çubuğundaki ikondan izin verip tekrar dene.';
+      if (err && err.name === 'NotFoundError') msg = 'Mikrofon bulunamadı.';
+      else if (err && err.name === 'NotReadableError') msg = 'Mikrofon başka uygulama tarafından kullanılıyor.';
+      setState('error', { status: msg });
+    });
+  }
+
+  function stopRecording() {
+    if (recordTimer) { clearTimeout(recordTimer); recordTimer = null; }
+    isRecording = false;
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+      try { mediaRecorder.stop(); } catch (e) { /* ignore */ }
+    } else {
+      setState('idle');
+    }
+  }
+
+  // ---------- Recognition ----------
+  function processRecording() {
+    if (!audioChunks.length) {
+      setState('error', { status: 'Ses kaydedilemedi, tekrar dene.' });
+      return;
+    }
+    var blob = new Blob(audioChunks, { type: (audioChunks[0] && audioChunks[0].type) || 'audio/webm' });
     audioChunks = [];
+    setState('working');
 
-    // Try AudD first, fall back to SongFinder if nothing matched
-    const auddResult = await recognizeWithAudd(blob);
-    if (auddResult.matched) {
-      showResult(auddResult.song);
-      saveToHistory(auddResult.song);
-      return;
-    }
-
-    const sfResult = await recognizeWithSongFinder(blob);
-    if (sfResult.matched) {
-      showResult(sfResult.song);
-      saveToHistory(sfResult.song);
-      return;
-    }
-
-    showState('no-result');
-  }
-
-  // AudD recognition - works out of the box with test token (10 free/day)
-  async function recognizeWithAudd(blob) {
-    try {
-      const data = await browser.storage.local.get(['apiToken']);
-      const apiToken = data.apiToken || '';
-
-      const formData = new FormData();
-      formData.append('file', blob, 'recording.webm');
-      if (apiToken) {
-        formData.append('api_token', apiToken);
+    recognizeWithAudd(blob).then(function (r) {
+      if (r.matched) {
+        lastBackend = 'AudD';
+        return finishMatch(r.song, 'AudD ile bulundu');
       }
-      formData.append('return', 'spotify,apple_music,deezer,youtube');
-
-      const response = await fetch('https://api.audd.io/', {
-        method: 'POST',
-        body: formData
-      });
-
-      const result = await response.json();
-
-      if (result.status === 'success' && result.result) {
-        return { matched: true, song: result.result };
+      if (r.fatal) {
+        setState('error', { status: r.fatal });
+        return null;
       }
-      return { matched: false };
-    } catch (err) {
-      console.error('AudD error:', err);
-      return { matched: false };
-    }
-  }
-
-  // SongFinder.dev recognition - free, no API key, falls back when AudD misses
-  async function recognizeWithSongFinder(blob) {
-    try {
-      const formData = new FormData();
-      formData.append('file', blob, 'recording.webm');
-      formData.append('source', 'cli');
-
-      const response = await fetch('https://songfinder.dev/api/music/recognize', {
-        method: 'POST',
-        body: formData,
-        headers: {
-          'X-SongFinder-Client': 'cli'
+      setState('working', { status: 'İkinci kaynak deneniyor…' });
+      return recognizeWithSongFinder(blob).then(function (r2) {
+        if (r2.matched) {
+          lastBackend = 'SongFinder';
+          finishMatch(r2.song, 'SongFinder ile bulundu');
+        } else {
+          setState('noresult', { status: 'Eşleşme bulunamadı' });
         }
       });
+    }).catch(function (err) {
+      console.error('SoundSniff recognize error:', err);
+      setState('error', { status: 'Bağlantı hatası. İnterneti kontrol edip tekrar dene.' });
+    });
+  }
 
-      if (response.status === 429) {
-        console.warn('SongFinder rate limited');
-        return { matched: false };
-      }
+  function getToken() {
+    return browser.storage.local.get(['apiToken']).then(function (data) {
+      var t = (data.apiToken || '').trim();
+      return t || DEFAULT_TOKEN;
+    });
+  }
 
-      const payload = await response.json();
-      if (payload.code === 0 && payload.data && payload.data.matched) {
-        const d = payload.data;
-        return {
-          matched: true,
-          song: {
-            artist: d.artist || '',
-            title: d.title || '',
-            song_link: d.songLink || d.spotifyUrl || d.appleMusicUrl || '',
-            album_image: d.artworkUrl || ''
+  function recognizeWithAudd(blob) {
+    return getToken().then(function (token) {
+      var form = new FormData();
+      form.append('file', blob, 'recording.webm');
+      form.append('api_token', token);
+      form.append('return', 'spotify,apple_music,deezer');
+
+      return fetch('https://api.audd.io/', { method: 'POST', body: form })
+        .then(function (res) { return res.json(); })
+        .then(function (json) {
+          if (json && json.status === 'success' && json.result) {
+            return { matched: true, song: normalizeAudd(json.result) };
           }
-        };
-      }
-      return { matched: false };
-    } catch (err) {
+          if (json && json.status === 'error' && json.error) {
+            var code = json.error.error_code;
+            if (code === 901 || code === 900) {
+              // Kota/token sorunu: ikinci kaynağa düş
+              return { matched: false };
+            }
+            if (code === 500 || code === 400) return { matched: false };
+          }
+          return { matched: false };
+        })
+        .catch(function (err) {
+          console.error('AudD error:', err);
+          return { matched: false };
+        });
+    });
+  }
+
+  function recognizeWithSongFinder(blob) {
+    var form = new FormData();
+    form.append('file', blob, 'recording.webm');
+    form.append('source', 'cli');
+    return fetch('https://songfinder.dev/api/music/recognize', {
+      method: 'POST',
+      body: form,
+      headers: { 'X-SongFinder-Client': 'cli' }
+    }).then(function (res) {
+      if (res.status === 429) return { matched: false, limited: true };
+      return res.json().then(function (payload) {
+        if (payload && payload.code === 0 && payload.data && payload.data.matched) {
+          var d = payload.data;
+          return {
+            matched: true,
+            song: {
+              artist: d.artist || '', title: d.title || '', album: d.album || '',
+              link: d.songLink || d.spotifyUrl || d.appleMusicUrl || '',
+              artwork: d.artworkUrl || '', extra: ''
+            }
+          };
+        }
+        return { matched: false };
+      });
+    }).catch(function (err) {
       console.error('SongFinder error:', err);
       return { matched: false };
-    }
+    });
   }
 
-  function showResult(song) {
-    songArtist.textContent = song.artist || 'Unknown Artist';
-    songTitle.textContent = song.title || 'Unknown Song';
+  // ---------- Normalization ----------
+  function normalizeAudd(r) {
+    var artist = r.artist || '';
+    var title = r.title || '';
+    var album = r.album || '';
+    var link = r.song_link || '';
+    var artwork = '';
+    var bits = [];
 
-    if (isSafeUrl(song.song_link)) {
-      songInfo.style.cursor = 'pointer';
-      songInfo.onclick = () => {
-        browser.tabs.create({ url: song.song_link });
-      };
-    } else {
-      songInfo.style.cursor = 'default';
-      songInfo.onclick = null;
-    }
-
-    // Update album art
-    const img = albumArt.querySelector('img');
-    if (img) img.remove();
-    albumArt.querySelector('.album-art-inner').style.display = '';
-
-    if (isSafeUrl(song.song_link) && song.song_link.includes('youtu')) {
-      const videoId = song.song_link.includes('youtu.be/')
-        ? song.song_link.split('youtu.be/')[1]
-        : song.song_link.split('v=')[1];
-      if (videoId) {
-        const imgEl = document.createElement('img');
-        imgEl.src = `https://i3.ytimg.com/vi/${encodeURIComponent(videoId)}/hqdefault.jpg`;
-        imgEl.alt = 'Album Art';
-        albumArt.querySelector('.album-art-inner').style.display = 'none';
-        albumArt.appendChild(imgEl);
-      }
-    } else if (song.album_image && isSafeUrl(song.album_image)) {
-      const imgEl = document.createElement('img');
-      imgEl.src = song.album_image;
-      imgEl.alt = 'Album Art';
-      albumArt.querySelector('.album-art-inner').style.display = 'none';
-      albumArt.appendChild(imgEl);
-    }
-
-    showState('idle');
-  }
-
-  function isSafeUrl(url) {
-    if (!url || typeof url !== 'string') return false;
     try {
-      const parsed = new URL(url);
-      return parsed.protocol === 'http:' || parsed.protocol === 'https:';
-    } catch {
-      return false;
+      if (r.spotify && r.spotify.album && r.spotify.album.images && r.spotify.album.images.length) {
+        artwork = r.spotify.album.images[0].url || '';
+        if (!link && r.spotify.external_urls && r.spotify.external_urls.spotify) {
+          link = r.spotify.external_urls.spotify;
+        }
+      }
+      if (!artwork && r.apple_music && r.apple_music.artwork && r.apple_music.artwork.url) {
+        artwork = String(r.apple_music.artwork.url).replace('{w}x{h}', '300x300');
+        if (!link && r.apple_music.url) link = r.apple_music.url;
+      }
+      if (!artwork && r.deezer) {
+        artwork = r.deezer.cover_medium || r.deezer.cover || '';
+        if (!link && r.deezer.link) link = r.deezer.link;
+      }
+      if (r.release_date) bits.push(String(r.release_date).slice(0, 4));
+      if (r.label) bits.push(r.label);
+    } catch (e) { /* ignore */ }
+
+    return { artist: artist, title: title, album: album, link: link, artwork: artwork, extra: bits.join(' · ') };
+  }
+
+  function setArtwork(url) {
+    if (url && isSafeUrl(url)) {
+      discImg.src = url;
+      discImg.classList.remove('hidden');
+      discFallback.classList.add('hidden');
+    } else {
+      discImg.removeAttribute('src');
+      discImg.classList.add('hidden');
+      discFallback.classList.remove('hidden');
     }
   }
 
-  function showError(msg) {
-    errorText.textContent = msg;
-    showState('error');
-    setTimeout(() => showState('idle'), 3000);
+  function finishMatch(song, backendLabel) {
+    songArtist.textContent = song.artist || 'Bilinmeyen sanatçı';
+    songTitle.textContent = song.title || 'Bilinmeyen şarkı';
+    songMeta.textContent = [song.album, song.extra].filter(Boolean).join(' · ');
+    setArtwork(song.artwork);
+    renderLinks(song);
+    btnRetry.classList.add('hidden');
+    setState('result', { status: 'Bulundu', backend: backendLabel });
+    saveToHistory(song);
   }
 
-  // History
+  function renderLinks(song) {
+    songLinks.innerHTML = '';
+    var items = [];
+    if (isSafeUrl(song.link)) items.push({ label: 'Şarkıyı aç', url: song.link, primary: true });
+    if (!items.length) {
+      var q = encodeURIComponent(((song.artist || '') + ' ' + (song.title || '')).trim());
+      if (q) items.push({ label: 'Web’de ara', url: 'https://www.google.com/search?q=' + q, primary: true });
+    }
+    items.forEach(function (it) {
+      var a = document.createElement('a');
+      a.className = 'link-btn' + (it.primary ? ' primary' : '');
+      a.textContent = it.label;
+      a.href = it.url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.addEventListener('click', function (e) {
+        e.preventDefault();
+        browser.tabs.create({ url: it.url });
+      });
+      songLinks.appendChild(a);
+    });
+    songLinks.classList.remove('hidden');
+  }
+
+  // ---------- History ----------
   function saveToHistory(song) {
-    const entry = {
+    var entry = {
       artist: String(song.artist || '').slice(0, 200),
       title: String(song.title || '').slice(0, 200),
-      songLink: isSafeUrl(song.song_link) ? song.song_link : '',
+      album: String(song.album || '').slice(0, 200),
+      link: isSafeUrl(song.link) ? song.link : '',
+      artwork: isSafeUrl(song.artwork) ? song.artwork : '',
       timestamp: Date.now()
     };
-
-    // Dedup
-    history = history.filter(h =>
-      !(h.artist === entry.artist && h.title === entry.title)
-    );
-
+    if (!entry.artist && !entry.title) return;
+    history = history.filter(function (h) {
+      return !(h.artist === entry.artist && h.title === entry.title);
+    });
     history.unshift(entry);
-    if (history.length > 50) history = history.slice(0, 50);
-
-    browser.storage.local.set({ history });
+    history = history.slice(0, MAX_HISTORY);
+    browser.storage.local.set({ history: history });
     renderHistory();
   }
 
   function renderHistory() {
-    if (history.length === 0) {
-      historyList.innerHTML = `
-        <div class="empty-history">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path d="M9 18V5l12-2v13"/>
-            <circle cx="6" cy="18" r="3"/>
-            <circle cx="18" cy="16" r="3"/>
-          </svg>
-          <span>No songs identified yet</span>
-        </div>
-      `;
+    if (!history.length) {
+      historyList.innerHTML =
+        '<div class="empty-history">' +
+        '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">' +
+        '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>' +
+        '<span>Henüz şarkı tanınmadı</span>' +
+        '<small>Dinle düğmesine bas, etrafındaki müziği bulalım</small>' +
+        '</div>';
       return;
     }
+    historyList.innerHTML = history.map(function (item, i) {
+      var art = isSafeUrl(item.artwork)
+        ? '<img src="' + escapeAttr(item.artwork) + '" alt="" loading="lazy"/>'
+        : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">' +
+          '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>';
+      return (
+        '<div class="history-item" data-index="' + i + '">' +
+        '<div class="history-cover">' + art + '</div>' +
+        '<div class="history-info">' +
+        '<div class="history-info-title">' + escapeHtml(item.title) + '</div>' +
+        '<div class="history-info-artist">' + escapeHtml(item.artist) + '</div>' +
+        '<div class="history-info-time">' + escapeHtml(formatTime(item.timestamp)) + '</div>' +
+        '</div>' +
+        '<button class="history-delete" data-index="' + i + '" title="Kaldır">' +
+        '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+        '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
+        '</button></div>'
+      );
+    }).join('');
 
-    historyList.innerHTML = history.map((item, i) => `
-      <div class="history-item" data-index="${i}">
-        <div class="history-cover">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path d="M9 18V5l12-2v13"/>
-            <circle cx="6" cy="18" r="3"/>
-            <circle cx="18" cy="16" r="3"/>
-          </svg>
-        </div>
-        <div class="history-info">
-          <div class="history-info-title">${escapeHtml(item.title)}</div>
-          <div class="history-info-artist">${escapeHtml(item.artist)}</div>
-          <div class="history-info-time">${formatTime(item.timestamp)}</div>
-        </div>
-        <button class="history-delete" data-index="${i}" title="Remove">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="18" y1="6" x2="6" y2="18"/>
-            <line x1="6" y1="6" x2="18" y2="18"/>
-          </svg>
-        </button>
-      </div>
-    `).join('');
-
-    // Click to open
-    historyList.querySelectorAll('.history-item').forEach(el => {
-      el.addEventListener('click', (e) => {
+    historyList.querySelectorAll('.history-item').forEach(function (el) {
+      el.addEventListener('click', function (e) {
         if (e.target.closest('.history-delete')) return;
-        const idx = parseInt(el.dataset.index, 10);
-        if (history[idx] && isSafeUrl(history[idx].songLink)) {
-          browser.tabs.create({ url: history[idx].songLink });
+        var idx = parseInt(el.getAttribute('data-index'), 10);
+        if (history[idx] && isSafeUrl(history[idx].link)) {
+          browser.tabs.create({ url: history[idx].link });
         }
       });
     });
-
-    // Delete buttons
-    historyList.querySelectorAll('.history-delete').forEach(btn => {
-      btn.addEventListener('click', (e) => {
+    historyList.querySelectorAll('.history-delete').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
         e.stopPropagation();
-        const idx = parseInt(btn.dataset.index);
+        var idx = parseInt(btn.getAttribute('data-index'), 10);
         history.splice(idx, 1);
-        browser.storage.local.set({ history });
+        browser.storage.local.set({ history: history });
         renderHistory();
       });
     });
   }
 
+  // ---------- Helpers ----------
   function formatTime(ts) {
-    const d = new Date(ts);
-    const now = new Date();
-    const diff = now - d;
-
-    if (diff < 60000) return 'Just now';
-    if (diff < 3600000) return Math.floor(diff / 60000) + 'm ago';
-    if (diff < 86400000) return Math.floor(diff / 3600000) + 'h ago';
-    return d.toLocaleDateString();
+    var t = Number(ts);
+    if (!t) return '';
+    var diff = Date.now() - t;
+    if (diff < 60000) return 'az önce';
+    if (diff < 3600000) return Math.floor(diff / 60000) + ' dk önce';
+    if (diff < 86400000) return Math.floor(diff / 3600000) + ' sa önce';
+    return new Date(t).toLocaleDateString();
   }
 
   function escapeHtml(str) {
-    if (!str) return '';
-    const div = document.createElement('div');
-    div.textContent = str;
+    if (str === undefined || str === null) return '';
+    var div = document.createElement('div');
+    div.textContent = String(str);
     return div.innerHTML;
   }
 
-  // Message listener for background
-  browser.runtime.onMessage.addListener((msg) => {
-    if (msg.cmd === 'result') {
-      showResult(msg.song);
-      saveToHistory(msg.song);
-    } else if (msg.cmd === 'no-result') {
-      showState('no-result');
-    } else if (msg.cmd === 'error') {
-      showError(msg.text);
+  function escapeAttr(str) {
+    return escapeHtml(str).replace(/"/g, '&quot;');
+  }
+
+  function isSafeUrl(url) {
+    if (!url || typeof url !== 'string') return false;
+    try {
+      var p = new URL(url);
+      return p.protocol === 'http:' || p.protocol === 'https:';
+    } catch (e) {
+      return false;
     }
-  });
+  }
 
   init();
 })();
