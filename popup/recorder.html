@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SoundSniff — Mikrofonla dinle</title>
+  <link rel="stylesheet" href="css/popup.css">
+  <style>
+    body { width: auto; min-height: 100vh; max-height: none; }
+    .recorder-wrap { max-width: 420px; margin: 0 auto; padding: 32px 20px; }
+    .recorder-hint { font-size: 12.5px; color: var(--muted); margin-top: 12px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="app" id="app" data-state="idle">
+    <div class="recorder-wrap">
+      <header class="header" style="border:1px solid var(--line); border-radius: 14px; margin-bottom: 16px;">
+        <div class="brand">
+          <img class="brand-logo" src="../icons/icon-48.png" alt="SoundSniff" width="30" height="30">
+          <div class="brand-text">
+            <h1 class="title">SoundSniff</h1>
+            <span class="subtitle">Mikrofonla dinleme</span>
+          </div>
+        </div>
+      </header>
+
+      <div class="status-pill" id="status-pill" style="margin: 0 auto 8px;">
+        <span class="status-dot" id="status-dot"></span>
+        <span id="status-text">Hazırlanıyor…</span>
+      </div>
+
+      <div class="stage" style="padding-top: 8px;">
+        <div class="disc" id="disc">
+          <div class="disc-fallback" id="disc-fallback">
+            <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4">
+              <path d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/>
+            </svg>
+          </div>
+          <div class="eq" id="eq" aria-hidden="true">
+            <span></span><span></span><span></span><span></span><span></span>
+          </div>
+        </div>
+
+        <div class="song-block">
+          <div class="song-artist" id="song-artist"></div>
+          <div class="song-title" id="song-title"></div>
+          <div class="song-meta" id="song-meta"></div>
+          <div class="song-links hidden" id="song-links"></div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button id="btn-close" class="retry-btn">Sekmeyi kapat</button>
+        <p class="recorder-hint">İlk açılışta adres çubuğundaki mikrofon isteğine izin ver. "Kararımı hatırla" seçiliyse bir daha sorulmaz.</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/recognize.js"></script>
+  <script src="js/recorder.js"></script>
+</body>
+</html>

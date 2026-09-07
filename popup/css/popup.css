@@ -321,6 +321,33 @@ body {
   flex-shrink: 0;
 }
 
+.controls-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  width: 100%;
+}
+
+.controls-spacer { width: 40px; }
+
+.mic-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--ink-2);
+  color: var(--muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+}
+
+.mic-btn:hover { color: var(--cream); border-color: var(--fox); }
+.mic-btn:active { transform: scale(0.94); }
+
 .listen-btn {
   position: relative;
   width: 76px;

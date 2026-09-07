@@ -1,12 +1,12 @@
 {
   "manifest_version": 3,
   "name": "SoundSniff",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Identify music playing around you - Shazam alternative for Firefox",
   "author": "SoundSniff",
 
   "background": {
-    "scripts": ["js/background.js"]
+    "scripts": ["js/recognize.js", "js/background.js"]
   },
 
   "action": {
@@ -33,12 +33,23 @@
     "open_in_tab": false
   },
 
+  "content_scripts": [
+    {
+      "js": ["js/content.js"],
+      "matches": ["http://*/*", "https://*/*"],
+      "all_frames": false,
+      "run_at": "document_idle"
+    }
+  ],
+
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'; base-uri 'none'"
   },
 
   "permissions": [
-    "storage"
+    "storage",
+    "activeTab",
+    "scripting"
   ],
 
   "host_permissions": [

@@ -1,14 +1,15 @@
 (function () {
   'use strict';
 
-  var DEFAULT_TOKEN = 'test';
   var MAX_HISTORY = 50;
+  var CAPTURE_TIMEOUT_MS = 100000;
 
   // ---------- DOM ----------
   function $(id) { return document.getElementById(id); }
 
   var app = $('app');
   var btnListen = $('btn-listen');
+  var btnMic = $('btn-mic');
   var btnHistory = $('btn-history');
   var btnSettings = $('btn-settings');
   var btnBackHistory = $('btn-back-history');
@@ -20,9 +21,8 @@
   var screenHistory = $('screen-history');
   var screenSettings = $('screen-settings');
 
-  var statusPill = $('status-pill');
-  var statusDot = $('status-dot');
   var statusText = $('status-text');
+  var statusDot = $('status-dot');
   var disc = $('disc');
   var discImg = $('disc-img');
   var discFallback = $('disc-fallback');
@@ -41,18 +41,15 @@
   var settingsSaved = $('settings-saved');
 
   // ---------- State ----------
-  var uiState = 'idle'; // idle | listening | working | result | noresult | error
-  var isRecording = false;
-  var mediaRecorder = null;
-  var audioChunks = [];
-  var recordTimer = null;
+  var uiState = 'idle';
+  var capturing = false;
+  var captureTimer = null;
   var errorTimer = null;
   var history = [];
-  var lastBackend = '';
 
   // ---------- Init ----------
   function init() {
-    browser.storage.local.get(['history', 'apiToken', 'recordingLength'])
+    browser.storage.local.get(['history', 'apiToken', 'recordingLength', 'lastResult'])
       .then(function (data) {
         if (Array.isArray(data.history)) history = data.history.slice(0, MAX_HISTORY);
         if (data.apiToken) apiTokenInput.value = data.apiToken;
@@ -62,6 +59,12 @@
           recordingLengthValue.textContent = len + 's';
         }
         renderHistory();
+        // Arka planda biten iş varsa göster (örn. sekme kapalıyken)
+        if (data.lastResult && data.lastResult.song &&
+            (Date.now() - Number(data.lastResult.at || 0)) < 10 * 60 * 1000) {
+          showResult(data.lastResult.song, data.lastResult.backendLabel || '');
+        }
+        return browser.storage.local.remove('lastResult');
       })
       .catch(function (err) {
         console.error('SoundSniff init error:', err);
@@ -118,8 +121,8 @@
 
   // ---------- State machine ----------
   var STRINGS = {
-    idle: 'Dinlemek için dokun',
-    listening: 'Dinleniyor…',
+    idle: 'Tanımak için dokun',
+    listening: 'Sekme dinleniyor…',
     working: 'Tanımlanıyor…',
     result: 'Bulundu',
     noresult: 'Eşleşme yok',
@@ -133,21 +136,11 @@
     statusText.textContent = (detail && detail.status) || STRINGS[next] || '';
     backendNote.textContent = (detail && detail.backend) || '';
 
-    if (next === 'listening' || next === 'working') {
-      btnListen.classList.add('busy');
-      disc.classList.add('spinning');
-      eq.classList.add('on');
-    } else {
-      btnListen.classList.remove('busy');
-      disc.classList.remove('spinning');
-      eq.classList.remove('on');
-    }
-
-    if (next === 'listening' || next === 'working' || next === 'result') {
-      statusDot.classList.add('live');
-    } else {
-      statusDot.classList.remove('live');
-    }
+    var live = (next === 'listening' || next === 'working' || next === 'result');
+    statusDot.classList.toggle('live', live);
+    btnListen.classList.toggle('busy', next === 'listening' || next === 'working');
+    disc.classList.toggle('spinning', live);
+    eq.classList.toggle('on', next === 'listening' || next === 'working');
 
     if (next === 'noresult' || next === 'error') {
       btnRetry.classList.remove('hidden');
@@ -155,29 +148,58 @@
       btnRetry.classList.add('hidden');
     }
 
+    if (captureTimer) { clearTimeout(captureTimer); captureTimer = null; }
     if (errorTimer) { clearTimeout(errorTimer); errorTimer = null; }
     if (next === 'error') {
       errorTimer = setTimeout(function () {
-        if (uiState === 'error') setState('idle');
-      }, 4200);
+        if (uiState === 'error') { capturing = false; setState('idle'); }
+      }, 6000);
     }
   }
 
-  // ---------- Recording ----------
-  btnListen.addEventListener('click', function () {
-    if (isRecording) {
-      stopRecording();
-    } else if (uiState === 'working') {
+  // ---------- Capture (sekme sesi — izin istemez) ----------
+  function getDurationSec() {
+    var len = parseInt(recordingLength.value, 10);
+    return (len >= 5 && len <= 30) ? len : 10;
+  }
+
+  function startCapture() {
+    if (capturing || uiState === 'working') return;
+    capturing = true;
+    resetResultView();
+    setState('listening');
+    try {
+      browser.runtime.sendMessage({ cmd: 'capture-tab', durationSec: getDurationSec() })
+        .catch(function () {
+          capturing = false;
+          setState('error', { status: 'Eklenti arka planına ulaşılamadı.' });
+        });
+    } catch (e) {
+      capturing = false;
+      setState('error', { status: 'Eklenti arka planına ulaşılamadı.' });
       return;
-    } else {
-      resetResultView();
-      startRecording();
     }
+    captureTimer = setTimeout(function () {
+      if (capturing) {
+        capturing = false;
+        setState('error', { status: 'Zaman aşımı. Tekrar dene.' });
+      }
+    }, CAPTURE_TIMEOUT_MS);
+  }
+
+  btnListen.addEventListener('click', function () {
+    if (capturing) return;
+    startCapture();
   });
 
   btnRetry.addEventListener('click', function () {
-    resetResultView();
-    startRecording();
+    if (capturing) return;
+    startCapture();
+  });
+
+  // ---------- Mikrofon (ayrı sekmede — izin penceresi çalışır) ----------
+  btnMic.addEventListener('click', function () {
+    browser.tabs.create({ url: browser.runtime.getURL('popup/recorder.html') });
   });
 
   function resetResultView() {
@@ -190,219 +212,64 @@
     setArtwork(null);
   }
 
-  function detectMimeType() {
-    var types = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/ogg'];
-    for (var i = 0; i < types.length; i++) {
-      try {
-        if (window.MediaRecorder && MediaRecorder.isTypeSupported(types[i])) return types[i];
-      } catch (e) { /* ignore */ }
-    }
-    return '';
-  }
+  // ---------- Background mesajları ----------
+  var UNAVAILABLE_MSGS = {
+    'no-media': 'Bu sekmede çalan ses bulunamadı. Müzik çalan sekmeye geç ya da mikrofonla dinle.',
+    'paused': 'Sekmedeki medya duraklatılmış görünüyor. Oynatıp tekrar dene.',
+    'silent': 'Sekmeden ses alınamadı (korumalı içerik olabilir). Mikrofonla dinlemeyi dene.',
+    'hooked': 'Sekme sesi başka şekilde yakalanmış. Sayfayı yenileyip tekrar dene.',
+    'busy': 'Zaten bir kayıt sürüyor, bitmesini bekle.',
+    'restricted': 'Bu sayfada yakalama yapılamaz. Müzik çalan bir sekmeye geç.',
+    'no-tab': 'Aktif sekme bulunamadı.',
+    'reload': 'Sayfayı yenileyip tekrar dene.',
+    'unsupported': 'Bu sekmede kayıt desteklenmiyor. Mikrofonla dinlemeyi dene.',
+    'error': 'Kayıt alınamadı, tekrar dene.'
+  };
 
-  function startRecording() {
-    if (typeof navigator === 'undefined' ||
-        !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      setState('error', { status: 'Bu tarayıcı mikrofon kaydını desteklemiyor.' });
-      return;
-    }
-    if (typeof window.MediaRecorder === 'undefined') {
-      setState('error', { status: 'Bu tarayıcı ses kaydını desteklemiyor.' });
-      return;
-    }
-
-    navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
-    }).then(function (stream) {
-      audioChunks = [];
-      var mimeType = detectMimeType();
-      try {
-        mediaRecorder = mimeType
-          ? new MediaRecorder(stream, { mimeType: mimeType })
-          : new MediaRecorder(stream);
-      } catch (err) {
-        stream.getTracks().forEach(function (t) { t.stop(); });
-        setState('error', { status: 'Kayıt başlatılamadı.' });
-        return;
-      }
-
-      mediaRecorder.ondataavailable = function (e) {
-        if (e.data && e.data.size > 0) audioChunks.push(e.data);
-      };
-      mediaRecorder.onstop = function () {
-        stream.getTracks().forEach(function (t) { t.stop(); });
-        processRecording();
-      };
-      mediaRecorder.onerror = function () {
-        try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {}
-        isRecording = false;
-        setState('error', { status: 'Kayıt sırasında hata oldu.' });
-      };
-
-      try {
-        mediaRecorder.start();
-      } catch (err) {
-        setState('error', { status: 'Kayıt başlatılamadı.' });
-        return;
-      }
-
-      isRecording = true;
+  browser.runtime.onMessage.addListener(function (msg) {
+    if (!msg || !msg.cmd) return undefined;
+    if (msg.cmd === 'capture-started') {
       setState('listening');
-
-      var secs = parseInt(recordingLength.value, 10);
-      if (!(secs >= 5 && secs <= 30)) secs = 10;
-      if (recordTimer) clearTimeout(recordTimer);
-      recordTimer = setTimeout(function () {
-        if (isRecording) stopRecording();
-      }, secs * 1000);
-    }).catch(function (err) {
-      var msg = 'Mikrofon izni gerekli. Adres çubuğundaki ikondan izin verip tekrar dene.';
-      if (err && err.name === 'NotFoundError') msg = 'Mikrofon bulunamadı.';
-      else if (err && err.name === 'NotReadableError') msg = 'Mikrofon başka uygulama tarafından kullanılıyor.';
-      setState('error', { status: msg });
-    });
-  }
-
-  function stopRecording() {
-    if (recordTimer) { clearTimeout(recordTimer); recordTimer = null; }
-    isRecording = false;
-    if (mediaRecorder && mediaRecorder.state === 'recording') {
-      try { mediaRecorder.stop(); } catch (e) { /* ignore */ }
-    } else {
-      setState('idle');
+    } else if (msg.cmd === 'recognizing') {
+      setState('working');
+    } else if (msg.cmd === 'capture-unavailable') {
+      capturing = false;
+      setState('error', { status: UNAVAILABLE_MSGS[msg.reason] || UNAVAILABLE_MSGS.error });
+    } else if (msg.cmd === 'result') {
+      capturing = false;
+      if (msg.song) {
+        showResult(msg.song, msg.backendLabel || '');
+        refreshHistoryFromStorage();
+      }
+    } else if (msg.cmd === 'no-result') {
+      capturing = false;
+      setState('noresult', { status: 'Eşleşme bulunamadı' });
+    } else if (msg.cmd === 'error') {
+      capturing = false;
+      setState('error', { status: msg.text || 'Hata oldu.' });
+    } else if (msg.cmd === 'mic-result') {
+      refreshHistoryFromStorage();
     }
+    return undefined;
+  });
+
+  function refreshHistoryFromStorage() {
+    browser.storage.local.get(['history']).then(function (data) {
+      if (Array.isArray(data.history)) {
+        history = data.history.slice(0, MAX_HISTORY);
+        renderHistory();
+      }
+    }).catch(function () {});
   }
 
-  // ---------- Recognition ----------
-  function processRecording() {
-    if (!audioChunks.length) {
-      setState('error', { status: 'Ses kaydedilemedi, tekrar dene.' });
-      return;
-    }
-    var blob = new Blob(audioChunks, { type: (audioChunks[0] && audioChunks[0].type) || 'audio/webm' });
-    audioChunks = [];
-    setState('working');
-
-    recognizeWithAudd(blob).then(function (r) {
-      if (r.matched) {
-        lastBackend = 'AudD';
-        return finishMatch(r.song, 'AudD ile bulundu');
-      }
-      if (r.fatal) {
-        setState('error', { status: r.fatal });
-        return null;
-      }
-      setState('working', { status: 'İkinci kaynak deneniyor…' });
-      return recognizeWithSongFinder(blob).then(function (r2) {
-        if (r2.matched) {
-          lastBackend = 'SongFinder';
-          finishMatch(r2.song, 'SongFinder ile bulundu');
-        } else {
-          setState('noresult', { status: 'Eşleşme bulunamadı' });
-        }
-      });
-    }).catch(function (err) {
-      console.error('SoundSniff recognize error:', err);
-      setState('error', { status: 'Bağlantı hatası. İnterneti kontrol edip tekrar dene.' });
-    });
-  }
-
-  function getToken() {
-    return browser.storage.local.get(['apiToken']).then(function (data) {
-      var t = (data.apiToken || '').trim();
-      return t || DEFAULT_TOKEN;
-    });
-  }
-
-  function recognizeWithAudd(blob) {
-    return getToken().then(function (token) {
-      var form = new FormData();
-      form.append('file', blob, 'recording.webm');
-      form.append('api_token', token);
-      form.append('return', 'spotify,apple_music,deezer');
-
-      return fetch('https://api.audd.io/', { method: 'POST', body: form })
-        .then(function (res) { return res.json(); })
-        .then(function (json) {
-          if (json && json.status === 'success' && json.result) {
-            return { matched: true, song: normalizeAudd(json.result) };
-          }
-          if (json && json.status === 'error' && json.error) {
-            var code = json.error.error_code;
-            if (code === 901 || code === 900) {
-              // Kota/token sorunu: ikinci kaynağa düş
-              return { matched: false };
-            }
-            if (code === 500 || code === 400) return { matched: false };
-          }
-          return { matched: false };
-        })
-        .catch(function (err) {
-          console.error('AudD error:', err);
-          return { matched: false };
-        });
-    });
-  }
-
-  function recognizeWithSongFinder(blob) {
-    var form = new FormData();
-    form.append('file', blob, 'recording.webm');
-    form.append('source', 'cli');
-    return fetch('https://songfinder.dev/api/music/recognize', {
-      method: 'POST',
-      body: form,
-      headers: { 'X-SongFinder-Client': 'cli' }
-    }).then(function (res) {
-      if (res.status === 429) return { matched: false, limited: true };
-      return res.json().then(function (payload) {
-        if (payload && payload.code === 0 && payload.data && payload.data.matched) {
-          var d = payload.data;
-          return {
-            matched: true,
-            song: {
-              artist: d.artist || '', title: d.title || '', album: d.album || '',
-              link: d.songLink || d.spotifyUrl || d.appleMusicUrl || '',
-              artwork: d.artworkUrl || '', extra: ''
-            }
-          };
-        }
-        return { matched: false };
-      });
-    }).catch(function (err) {
-      console.error('SongFinder error:', err);
-      return { matched: false };
-    });
-  }
-
-  // ---------- Normalization ----------
-  function normalizeAudd(r) {
-    var artist = r.artist || '';
-    var title = r.title || '';
-    var album = r.album || '';
-    var link = r.song_link || '';
-    var artwork = '';
-    var bits = [];
-
-    try {
-      if (r.spotify && r.spotify.album && r.spotify.album.images && r.spotify.album.images.length) {
-        artwork = r.spotify.album.images[0].url || '';
-        if (!link && r.spotify.external_urls && r.spotify.external_urls.spotify) {
-          link = r.spotify.external_urls.spotify;
-        }
-      }
-      if (!artwork && r.apple_music && r.apple_music.artwork && r.apple_music.artwork.url) {
-        artwork = String(r.apple_music.artwork.url).replace('{w}x{h}', '300x300');
-        if (!link && r.apple_music.url) link = r.apple_music.url;
-      }
-      if (!artwork && r.deezer) {
-        artwork = r.deezer.cover_medium || r.deezer.cover || '';
-        if (!link && r.deezer.link) link = r.deezer.link;
-      }
-      if (r.release_date) bits.push(String(r.release_date).slice(0, 4));
-      if (r.label) bits.push(r.label);
-    } catch (e) { /* ignore */ }
-
-    return { artist: artist, title: title, album: album, link: link, artwork: artwork, extra: bits.join(' · ') };
+  // ---------- Sonuç ----------
+  function showResult(song, backendLabel) {
+    songArtist.textContent = song.artist || 'Bilinmeyen sanatçı';
+    songTitle.textContent = song.title || 'Bilinmeyen şarkı';
+    songMeta.textContent = [song.album].filter(Boolean).join(' · ');
+    setArtwork(song.artwork);
+    renderLinks(song);
+    setState('result', { status: 'Bulundu', backend: backendLabel });
   }
 
   function setArtwork(url) {
@@ -417,61 +284,30 @@
     }
   }
 
-  function finishMatch(song, backendLabel) {
-    songArtist.textContent = song.artist || 'Bilinmeyen sanatçı';
-    songTitle.textContent = song.title || 'Bilinmeyen şarkı';
-    songMeta.textContent = [song.album, song.extra].filter(Boolean).join(' · ');
-    setArtwork(song.artwork);
-    renderLinks(song);
-    btnRetry.classList.add('hidden');
-    setState('result', { status: 'Bulundu', backend: backendLabel });
-    saveToHistory(song);
-  }
-
   function renderLinks(song) {
     songLinks.innerHTML = '';
-    var items = [];
-    if (isSafeUrl(song.link)) items.push({ label: 'Şarkıyı aç', url: song.link, primary: true });
-    if (!items.length) {
+    var url = isSafeUrl(song.link) ? song.link : '';
+    if (!url) {
       var q = encodeURIComponent(((song.artist || '') + ' ' + (song.title || '')).trim());
-      if (q) items.push({ label: 'Web’de ara', url: 'https://www.google.com/search?q=' + q, primary: true });
+      if (q) url = 'https://www.google.com/search?q=' + q;
     }
-    items.forEach(function (it) {
+    if (url) {
       var a = document.createElement('a');
-      a.className = 'link-btn' + (it.primary ? ' primary' : '');
-      a.textContent = it.label;
-      a.href = it.url;
+      a.className = 'link-btn primary';
+      a.textContent = 'Şarkıyı aç';
+      a.href = url;
       a.target = '_blank';
       a.rel = 'noopener noreferrer';
       a.addEventListener('click', function (e) {
         e.preventDefault();
-        browser.tabs.create({ url: it.url });
+        browser.tabs.create({ url: url });
       });
       songLinks.appendChild(a);
-    });
+    }
     songLinks.classList.remove('hidden');
   }
 
   // ---------- History ----------
-  function saveToHistory(song) {
-    var entry = {
-      artist: String(song.artist || '').slice(0, 200),
-      title: String(song.title || '').slice(0, 200),
-      album: String(song.album || '').slice(0, 200),
-      link: isSafeUrl(song.link) ? song.link : '',
-      artwork: isSafeUrl(song.artwork) ? song.artwork : '',
-      timestamp: Date.now()
-    };
-    if (!entry.artist && !entry.title) return;
-    history = history.filter(function (h) {
-      return !(h.artist === entry.artist && h.title === entry.title);
-    });
-    history.unshift(entry);
-    history = history.slice(0, MAX_HISTORY);
-    browser.storage.local.set({ history: history });
-    renderHistory();
-  }
-
   function renderHistory() {
     if (!history.length) {
       historyList.innerHTML =
@@ -479,7 +315,7 @@
         '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">' +
         '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>' +
         '<span>Henüz şarkı tanınmadı</span>' +
-        '<small>Dinle düğmesine bas, etrafındaki müziği bulalım</small>' +
+        '<small>Dinle düğmesine bas, çalan müziği bulalım</small>' +
         '</div>';
       return;
     }

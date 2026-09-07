@@ -11,7 +11,8 @@ Firefox (and forks) Shazam-style music recognition add-on. Listens via microphon
 
 ## Kullanım / Usage
 
-- Turuncu düğmeye bas, 5–30 sn dinlesin / Press the orange button, it listens 5–30s
+- Müzik çalan sekmedeyken turuncu düğmeye bas, 5–30 sn dinlesin (izin istemez) / On the tab playing music, press the orange button, it listens 5–30s (no permission needed)
+- Odadaki ses için mikrofon düğmesi ayrı sekme açar, izin orda verilir / For room audio the mic button opens a separate tab where permission works
 - Sonuç: sanatçı, şarkı, kapak, dinleme bağlantısı / Result: artist, title, artwork, listen link
 - Sonuçlar Geçmiş'te saklanır (50 adet) / Results are kept in History (50)
 
