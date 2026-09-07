@@ -128,7 +128,7 @@
     songArtist.textContent = song.artist || t('unknown_artist');
     songTitle.textContent = song.title || t('unknown_song');
     songMeta.textContent = [song.album, song.extra].filter(Boolean).join(' · ');
-    songLinks.innerHTML = '';
+    while (songLinks.firstChild) songLinks.removeChild(songLinks.firstChild);
     if (window.SoundSniffRecognize && window.SoundSniffRecognize.isSafeUrl(song.link)) {
       var a = document.createElement('a');
       a.className = 'link-btn primary';

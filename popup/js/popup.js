@@ -41,7 +41,7 @@
   var settingsSaved = $('settings-saved');
   var languageSelect = $('language-select');
   var aboutText = $('about-text');
-  var APP_VERSION = '1.3.0';
+  var APP_VERSION = '1.3.1';
 
   function t(key, vars) {
     try {
@@ -240,11 +240,15 @@
     browser.tabs.create({ url: browser.runtime.getURL('popup/recorder.html') });
   });
 
+  function clearChildren(el) {
+    while (el.firstChild) el.removeChild(el.firstChild);
+  }
+
   function resetResultView() {
     songArtist.textContent = '';
     songTitle.textContent = '';
     songMeta.textContent = '';
-    songLinks.innerHTML = '';
+    clearChildren(songLinks);
     songLinks.classList.add('hidden');
     btnRetry.classList.add('hidden');
     setArtwork(null);
@@ -316,7 +320,7 @@
   }
 
   function renderLinks(song) {
-    songLinks.innerHTML = '';
+    clearChildren(songLinks);
     var url = isSafeUrl(song.link) ? song.link : '';
     if (!url) {
       var q = encodeURIComponent(((song.artist || '') + ' ' + (song.title || '')).trim());
@@ -339,54 +343,59 @@
   }
 
   // ---------- History ----------
+  function slot(root, name) {
+    return root.querySelector('[data-slot="' + name + '"]');
+  }
+
   function renderHistory() {
+    clearChildren(historyList);
     if (!history.length) {
-      historyList.innerHTML =
-        '<div class="empty-history">' +
-        '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">' +
-        '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>' +
-        '<span>' + escapeHtml(t('history_empty_t')) + '</span>' +
-        '<small>' + escapeHtml(t('history_empty_s')) + '</small>' +
-        '</div>';
+      var tpl = $('tpl-empty-history');
+      var empty = tpl.content.cloneNode(true);
+      slot(empty, 'title').textContent = t('history_empty_t');
+      slot(empty, 'sub').textContent = t('history_empty_s');
+      historyList.appendChild(empty);
       return;
     }
-    historyList.innerHTML = history.map(function (item, i) {
-      var art = isSafeUrl(item.artwork)
-        ? '<img src="' + escapeAttr(item.artwork) + '" alt="" loading="lazy"/>'
-        : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">' +
-          '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>';
-      return (
-        '<div class="history-item" data-index="' + i + '">' +
-        '<div class="history-cover">' + art + '</div>' +
-        '<div class="history-info">' +
-        '<div class="history-info-title">' + escapeHtml(item.title) + '</div>' +
-        '<div class="history-info-artist">' + escapeHtml(item.artist) + '</div>' +
-        '<div class="history-info-time">' + escapeHtml(formatTime(item.timestamp)) + '</div>' +
-        '</div>' +
-        '<button class="history-delete" data-index="' + i + '" title="' + escapeAttr(t('remove')) + '">' +
-        '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
-        '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
-        '</button></div>'
-      );
-    }).join('');
 
-    historyList.querySelectorAll('.history-item').forEach(function (el) {
-      el.addEventListener('click', function (e) {
+    var itemTpl = $('tpl-history-item');
+    history.forEach(function (item, i) {
+      var frag = itemTpl.content.cloneNode(true);
+      var row = frag.querySelector('.history-item');
+      row.setAttribute('data-index', String(i));
+
+      var cover = slot(frag, 'cover');
+      if (isSafeUrl(item.artwork)) {
+        clearChildren(cover);
+        var img = document.createElement('img');
+        img.setAttribute('src', item.artwork);
+        img.setAttribute('alt', '');
+        img.setAttribute('loading', 'lazy');
+        cover.appendChild(img);
+      }
+
+      slot(frag, 'title').textContent = item.title || '';
+      slot(frag, 'artist').textContent = item.artist || '';
+      slot(frag, 'time').textContent = formatTime(item.timestamp);
+
+      var del = slot(frag, 'delete');
+      del.setAttribute('data-index', String(i));
+      del.setAttribute('title', t('remove'));
+
+      row.addEventListener('click', function (e) {
         if (e.target.closest('.history-delete')) return;
-        var idx = parseInt(el.getAttribute('data-index'), 10);
-        if (history[idx] && isSafeUrl(history[idx].link)) {
-          browser.tabs.create({ url: history[idx].link });
+        if (history[i] && isSafeUrl(history[i].link)) {
+          browser.tabs.create({ url: history[i].link });
         }
       });
-    });
-    historyList.querySelectorAll('.history-delete').forEach(function (btn) {
-      btn.addEventListener('click', function (e) {
+      del.addEventListener('click', function (e) {
         e.stopPropagation();
-        var idx = parseInt(btn.getAttribute('data-index'), 10);
-        history.splice(idx, 1);
+        history.splice(i, 1);
         browser.storage.local.set({ history: history });
         renderHistory();
       });
+
+      historyList.appendChild(frag);
     });
   }
 
@@ -399,17 +408,6 @@
     if (diff < 3600000) return t('t_min', { n: Math.floor(diff / 60000) });
     if (diff < 86400000) return t('t_hr', { n: Math.floor(diff / 3600000) });
     return new Date(time).toLocaleDateString();
-  }
-
-  function escapeHtml(str) {
-    if (str === undefined || str === null) return '';
-    var div = document.createElement('div');
-    div.textContent = String(str);
-    return div.innerHTML;
-  }
-
-  function escapeAttr(str) {
-    return escapeHtml(str).replace(/"/g, '&quot;');
   }
 
   function isSafeUrl(url) {
