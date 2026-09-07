@@ -1,6 +1,6 @@
 # SoundSniff
 
-**[Click here for English](README.md)**
+**[English](README.md)**
 
 Firefox (ve forkları) için Shazam tarzı müzik tanıma eklentisi. Sekmede çalan şarkıyı bulur. Kayıt yok, API anahtarı zorunluluğu yok.
 
