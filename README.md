@@ -1,33 +1,30 @@
 # SoundSniff
 
-Firefox (ve forkları) için Shazam tarzı müzik tanıma eklentisi. Mikrofonla dinler, şarkıyı bulur. Kayıt yok, API anahtarı zorunluluğu yok.
+**[Türkçe için tıklayın](README.tr.md)**
 
-Firefox (and forks) Shazam-style music recognition add-on. Listens via microphone, finds the song. No sign-up, no API key required.
+Shazam-style music recognition add-on for Firefox (and forks). Finds the song playing in your tab. No sign-up, no API key required.
 
-## Kurulum / Install
+## Install
 
-1. `about:debugging#/runtime/this-firefox` aç / Open `about:debugging#/runtime/this-firefox`
-2. "Geçici Eklenti Yükle / Load Temporary Add-on" → `manifest.json` dosyasını seç / select `manifest.json`
+1. Open `about:debugging#/runtime/this-firefox`
+2. "Load Temporary Add-on" → select `manifest.json`
 
-## Kullanım / Usage
+## Usage
 
-- Müzik çalan sekmedeyken turuncu düğmeye bas, 5–30 sn dinlesin (izin istemez) / On the tab playing music, press the orange button, it listens 5–30s (no permission needed)
-- Odadaki ses için mikrofon düğmesi ayrı sekme açar, izin orda verilir / For room audio the mic button opens a separate tab where permission works
-- Sonuç: sanatçı, şarkı, kapak, dinleme bağlantısı / Result: artist, title, artwork, listen link
-- Sonuçlar Geçmiş'te saklanır (50 adet) / Results are kept in History (50)
+- On a tab playing music, press the orange button. It listens 5–30s — no permission prompt needed.
+- For room audio, the mic button opens a separate tab where the permission works.
+- Result: artist, title, artwork, listen link.
+- Results are kept in History (50 entries).
+- Default language is English; switch to Turkish in Settings.
 
-## Nasıl çalışır / How it works
+## How it works
 
-1. **AudD** ile tanır (anahtarsız ücretsiz kota dahil) / Recognizes via **AudD** (free quota, no key needed)
-2. Bulunamazsa **SongFinder** denenir / Falls back to **SongFinder**
-3. İstersen `dashboard.audd.io` adresinden ücretsiz anahtar alıp Ayarlar'a girebilirsin / Optionally paste your free key from `dashboard.audd.io` in Settings
+1. Recognizes via **AudD** (free quota included, no key needed).
+2. Falls back to **SongFinder** when nothing matches.
+3. Optionally paste your free key from `dashboard.audd.io` in Settings for more recognitions.
 
-## Dil / Language
+## Privacy
 
-Varsayılan İngilizce, Ayarlar'dan Türkçe'ye geçilebilir / Default English, switch to Turkish in Settings.
-
-## Gizlilik / Privacy
-
-- Ses yalnızca tanıma için gönderilir, saklanmaz / Audio is sent only for recognition, never stored
-- Telemetri yok, hesap yok / No telemetry, no accounts
-- En dar izinler: yalnızca `storage` / Least privilege: `storage` only
+- Audio is sent only for recognition, never stored.
+- No telemetry, no accounts.
+- Least privilege: `storage`, `activeTab` and `scripting` only.
