@@ -117,24 +117,42 @@
       background: #1a2d52;
       color: #ffffff;
     }
+
+    select {
+      width: 100%;
+      padding: 10px 12px;
+      background: #0f1f3d;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 8px;
+      color: #ffffff;
+      font-size: 13px;
+      outline: none;
+    }
   </style>
 </head>
 <body>
-  <h1>SoundSniff Settings</h1>
+  <h1 data-i18n="opt_title">SoundSniff Settings</h1>
 
   <div class="setting-group">
-    <label>API Token</label>
-    <p class="desc">
-      Optional. Get your own token at
-      <a href="https://dashboard.audd.io" target="_blank">dashboard.audd.io</a>
-      for unlimited recognition. Without a token, you get 10 free requests/day.
-    </p>
-    <input type="text" id="token" placeholder="Leave empty for free tier" autocomplete="off" />
+    <label for="lang" data-i18n="lang_label">Language</label>
+    <select id="lang">
+      <option value="en">English</option>
+      <option value="tr">Türkçe</option>
+    </select>
   </div>
 
   <div class="setting-group">
-    <label>Recording Length</label>
-    <p class="desc">Longer clips may improve accuracy. Default: 10 seconds.</p>
+    <label for="token"><span data-i18n="token_label">AudD API key</span> <span data-i18n="token_opt">(optional)</span></label>
+    <p class="desc">
+      <span data-i18n="token_desc">Leave empty to use the free quota. For more recognitions, get a free key at</span>
+      <a href="https://dashboard.audd.io" target="_blank">dashboard.audd.io</a>
+    </p>
+    <input type="text" id="token" data-i18n-ph="token_ph" placeholder="Can be left empty" autocomplete="off" />
+  </div>
+
+  <div class="setting-group">
+    <label for="length" data-i18n="reclen_label">Recording length</label>
+    <p class="desc" data-i18n="reclen_desc">Longer recordings usually give more accurate results.</p>
     <div class="range-row">
       <input type="range" id="length" min="5" max="30" value="10" step="1" />
       <span class="range-val" id="length-val">10s</span>
@@ -142,9 +160,10 @@
   </div>
 
   <div class="setting-group">
-    <button id="save">Save Settings</button>
+    <button id="save" data-i18n="opt_save">Save Settings</button>
   </div>
 
+  <script src="../js/i18n.js"></script>
   <script src="js/options.js"></script>
 </body>
 </html>

@@ -5,6 +5,13 @@
 
   function $(id) { return document.getElementById(id); }
 
+  function t(key, vars) {
+    try {
+      if (typeof window.I18N !== 'undefined') return window.I18N.t(key, vars);
+    } catch (e) {}
+    return key;
+  }
+
   var app = $('app');
   var statusText = $('status-text');
   var statusDot = $('status-dot');
@@ -36,7 +43,10 @@
     return '';
   }
 
-  browser.storage.local.get(['recordingLength']).then(function (data) {
+  browser.storage.local.get(['recordingLength', 'lang']).then(function (data) {
+    try {
+      if (typeof window.I18N !== 'undefined') window.I18N.setLang(data.lang || 'en');
+    } catch (e) {}
     var secs = parseInt(data.recordingLength, 10);
     if (!(secs >= 5 && secs <= 30)) secs = 10;
     start(secs);
@@ -44,102 +54,98 @@
 
   function start(secs) {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      setState('error', 'Bu tarayıcı mikrofon kaydını desteklemiyor.');
+      setState('error', t('rec_nogum'));
       return;
     }
-    setState('listening', 'Mikrofon izni bekleniyor…');
+    setState('listening', t('rec_wait_mic'));
     navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
     }).then(function (stream) {
-      setState('listening', 'Dinleniyor… (' + secs + ' sn)');
+      setState('listening', t('rec_listening', { s: secs }));
       var chunks = [];
       var mime = detectMimeType();
       var rec;
       try {
         rec = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
       } catch (e) {
-        stream.getTracks().forEach(function (t) { t.stop(); });
-        setState('error', 'Kayıt başlatılamadı.');
+        stream.getTracks().forEach(function (tr) { tr.stop(); });
+        setState('error', t('rec_startfail'));
         return;
       }
       rec.ondataavailable = function (e) {
         if (e.data && e.data.size > 0) chunks.push(e.data);
       };
       rec.onstop = function () {
-        stream.getTracks().forEach(function (t) { t.stop(); });
+        stream.getTracks().forEach(function (tr) { tr.stop(); });
         if (!chunks.length) {
-          setState('error', 'Ses kaydedilemedi.');
+          setState('error', t('rec_nosound'));
           return;
         }
         var blob = new Blob(chunks, { type: (chunks[0] && chunks[0].type) || 'audio/webm' });
         recognize(blob);
       };
       rec.onerror = function () {
-        try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {}
-        setState('error', 'Kayıt sırasında hata oldu.');
+        try { stream.getTracks().forEach(function (tr) { tr.stop(); }); } catch (e) {}
+        setState('error', t('rec_recerr'));
       };
       try { rec.start(); } catch (e) {
-        setState('error', 'Kayıt başlatılamadı.');
+        setState('error', t('rec_startfail'));
         return;
       }
       setTimeout(function () {
         try { if (rec.state === 'recording') rec.stop(); } catch (e) {}
       }, secs * 1000);
     }).catch(function (err) {
-      var msg = 'Mikrofon izni verilmedi. Adres çubuğundaki ikona tıklayıp izin ver, sonra sekmeyi yenile.';
-      if (err && err.name === 'NotFoundError') msg = 'Mikrofon bulunamadı.';
-      else if (err && err.name === 'NotReadableError') msg = 'Mikrofon başka uygulama tarafından kullanılıyor.';
-      setState('error', msg);
+      var key = 'rec_denied';
+      if (err && err.name === 'NotFoundError') key = 'rec_nomic';
+      else if (err && err.name === 'NotReadableError') key = 'rec_micbusy';
+      setState('error', t(key));
     });
   }
 
   function recognize(blob) {
-    setState('working', 'Tanımlanıyor…');
+    setState('working', t('rec_working'));
     var api = window.SoundSniffRecognize;
     if (!api) {
-      setState('error', 'Tanıma servisi yüklenemedi.');
+      setState('error', t('rec_noservice'));
       return;
     }
     var name = (blob.type || '').indexOf('ogg') !== -1 ? 'mic.ogg' : 'mic.webm';
     api.recognizeBlob(blob, name).then(function (r) {
       if (!r.matched) {
-        setState('noresult', 'Eşleşme bulunamadı. Müziğe yaklaşıp tekrar dene.');
+        setState('noresult', t('rec_noresult'));
         return;
       }
       showResult(r.song);
-      saveMatch(r.song, r.backend === 'SongFinder' ? 'SongFinder ile bulundu' : 'AudD ile bulundu');
+      saveMatch(r.song, r.backend === 'SongFinder' ? 'songfinder' : 'audd');
     }).catch(function (err) {
       console.error('SoundSniff mic recognize error:', err);
-      setState('error', 'Bağlantı hatası. İnterneti kontrol edip tekrar dene.');
+      setState('error', t('rec_neterr'));
     });
   }
 
   function showResult(song) {
-    songArtist.textContent = song.artist || 'Bilinmeyen sanatçı';
-    songTitle.textContent = song.title || 'Bilinmeyen şarkı';
+    songArtist.textContent = song.artist || t('unknown_artist');
+    songTitle.textContent = song.title || t('unknown_song');
     songMeta.textContent = [song.album, song.extra].filter(Boolean).join(' · ');
     songLinks.innerHTML = '';
-    if (api_safe(song.link)) {
+    if (window.SoundSniffRecognize && window.SoundSniffRecognize.isSafeUrl(song.link)) {
       var a = document.createElement('a');
       a.className = 'link-btn primary';
-      a.textContent = 'Şarkıyı aç';
+      a.textContent = t('open_song');
       a.href = song.link;
       a.target = '_blank';
       a.rel = 'noopener noreferrer';
       songLinks.appendChild(a);
       songLinks.classList.remove('hidden');
     }
-    setState('result', 'Bulundu');
+    setState('result', t('rec_found'));
     try {
       browser.runtime.sendMessage({ cmd: 'mic-result' }).catch(function () {});
     } catch (e) {}
   }
 
-  function api_safe(url) {
-    return window.SoundSniffRecognize && window.SoundSniffRecognize.isSafeUrl(url);
-  }
-
-  function saveMatch(song, backendLabel) {
+  function saveMatch(song, backend) {
     var safe = window.SoundSniffRecognize.isSafeUrl;
     var entry = {
       artist: String(song.artist || '').slice(0, 200),
@@ -156,7 +162,7 @@
       h = h.slice(0, 50);
       return browser.storage.local.set({
         history: h,
-        lastResult: { song: entry, backendLabel: backendLabel, at: Date.now() }
+        lastResult: { song: entry, backend: backend, at: Date.now() }
       });
     }).catch(function (err) { console.error('SoundSniff mic save error:', err); });
   }

@@ -1,34 +1,57 @@
 (function () {
   'use strict';
 
-  const tokenInput = document.getElementById('token');
-  const lengthInput = document.getElementById('length');
-  const lengthVal = document.getElementById('length-val');
-  const saveBtn = document.getElementById('save');
+  var tokenInput = document.getElementById('token');
+  var lengthInput = document.getElementById('length');
+  var lengthVal = document.getElementById('length-val');
+  var saveBtn = document.getElementById('save');
+  var langSelect = document.getElementById('lang');
 
   if (!tokenInput || !lengthInput || !lengthVal || !saveBtn) {
     return;
   }
 
-  lengthInput.addEventListener('input', () => {
+  function applyLang(lang) {
+    try {
+      if (typeof window.I18N !== 'undefined') window.I18N.setLang(lang);
+    } catch (e) {}
+    if (langSelect) langSelect.value = (lang === 'tr') ? 'tr' : 'en';
+  }
+
+  lengthInput.addEventListener('input', function () {
     lengthVal.textContent = lengthInput.value + 's';
   });
 
-  browser.storage.local.get(['apiToken', 'recordingLength']).then(data => {
+  if (langSelect) {
+    langSelect.addEventListener('change', function () {
+      var lang = (langSelect.value === 'tr') ? 'tr' : 'en';
+      browser.storage.local.set({ lang: lang }).catch(function () {});
+      applyLang(lang);
+    });
+  }
+
+  browser.storage.local.get(['apiToken', 'recordingLength', 'lang']).then(function (data) {
     if (data.apiToken) tokenInput.value = data.apiToken;
     if (data.recordingLength) {
       lengthInput.value = data.recordingLength;
       lengthVal.textContent = data.recordingLength + 's';
     }
-  }).catch(err => console.error('SoundSniff options load error:', err));
+    applyLang(data.lang || 'en');
+  }).catch(function (err) { console.error('SoundSniff options load error:', err); });
 
-  saveBtn.addEventListener('click', () => {
-    browser.storage.local.set({
+  saveBtn.addEventListener('click', function () {
+    var payload = {
       apiToken: tokenInput.value.trim(),
       recordingLength: parseInt(lengthInput.value, 10) || 10
-    }).then(() => {
-      saveBtn.textContent = 'Saved!';
-      setTimeout(() => { saveBtn.textContent = 'Save Settings'; }, 1500);
-    }).catch(err => console.error('SoundSniff options save error:', err));
+    };
+    if (langSelect) payload.lang = (langSelect.value === 'tr') ? 'tr' : 'en';
+    browser.storage.local.set(payload).then(function () {
+      try {
+        var label = (typeof window.I18N !== 'undefined') ? window.I18N.t('settings_saved') : 'Saved!';
+        var original = saveBtn.textContent;
+        saveBtn.textContent = label;
+        setTimeout(function () { saveBtn.textContent = original; applyLang(payload.lang || 'en'); }, 1500);
+      } catch (e) {}
+    }).catch(function (err) { console.error('SoundSniff options save error:', err); });
   });
 })();

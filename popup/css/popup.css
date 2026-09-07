@@ -539,6 +539,20 @@ body {
 .setting-input:focus { border-color: var(--fox); }
 .setting-input::placeholder { color: var(--faint); }
 
+.setting-select {
+  width: 100%;
+  padding: 9px 12px;
+  background: var(--ink-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--cream);
+  font-size: 13px;
+  outline: none;
+  cursor: pointer;
+}
+
+.setting-select:focus { border-color: var(--fox); }
+
 .range-wrapper { display: flex; align-items: center; gap: 12px; }
 
 .setting-range {

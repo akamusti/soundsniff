@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SoundSniff — Mikrofonla dinle</title>
+  <title>SoundSniff — Microphone</title>
   <link rel="stylesheet" href="css/popup.css">
   <style>
     body { width: auto; min-height: 100vh; max-height: none; }
@@ -19,14 +19,14 @@
           <img class="brand-logo" src="../icons/icon-48.png" alt="SoundSniff" width="30" height="30">
           <div class="brand-text">
             <h1 class="title">SoundSniff</h1>
-            <span class="subtitle">Mikrofonla dinleme</span>
+            <span class="subtitle" data-i18n="rec_subtitle">Microphone listening</span>
           </div>
         </div>
       </header>
 
       <div class="status-pill" id="status-pill" style="margin: 0 auto 8px;">
         <span class="status-dot" id="status-dot"></span>
-        <span id="status-text">Hazırlanıyor…</span>
+        <span id="status-text">Getting ready…</span>
       </div>
 
       <div class="stage" style="padding-top: 8px;">
@@ -50,12 +50,13 @@
       </div>
 
       <div class="controls">
-        <button id="btn-close" class="retry-btn">Sekmeyi kapat</button>
-        <p class="recorder-hint">İlk açılışta adres çubuğundaki mikrofon isteğine izin ver. "Kararımı hatırla" seçiliyse bir daha sorulmaz.</p>
+        <button id="btn-close" class="retry-btn" data-i18n="rec_close">Close tab</button>
+        <p class="recorder-hint" data-i18n="rec_hint">On first open, allow the microphone prompt in the address bar. If "Remember this decision" is checked, you won't be asked again.</p>
       </div>
     </div>
   </div>
 
+  <script src="../js/i18n.js"></script>
   <script src="../js/recognize.js"></script>
   <script src="js/recorder.js"></script>
 </body>

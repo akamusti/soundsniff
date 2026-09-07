@@ -22,6 +22,10 @@ Firefox (and forks) Shazam-style music recognition add-on. Listens via microphon
 2. Bulunamazsa **SongFinder** denenir / Falls back to **SongFinder**
 3. İstersen `dashboard.audd.io` adresinden ücretsiz anahtar alıp Ayarlar'a girebilirsin / Optionally paste your free key from `dashboard.audd.io` in Settings
 
+## Dil / Language
+
+Varsayılan İngilizce, Ayarlar'dan Türkçe'ye geçilebilir / Default English, switch to Turkish in Settings.
+
 ## Gizlilik / Privacy
 
 - Ses yalnızca tanıma için gönderilir, saklanmaz / Audio is sent only for recognition, never stored

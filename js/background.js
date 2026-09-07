@@ -90,7 +90,7 @@
   function handleAudio(msg) {
     var buf = msg.buffer;
     if (!buf || !buf.byteLength || buf.byteLength > 8 * 1024 * 1024) {
-      notify({ cmd: 'error', text: 'Kayıt alınamadı, tekrar dene.' });
+      notify({ cmd: 'error', key: 'capture' });
       return;
     }
     notify({ cmd: 'recognizing' });
@@ -98,27 +98,27 @@
     try {
       blob = new Blob([buf], { type: msg.mime || 'audio/webm' });
     } catch (e) {
-      notify({ cmd: 'error', text: 'Kayıt alınamadı, tekrar dene.' });
+      notify({ cmd: 'error', key: 'capture' });
       return;
     }
     var api = (typeof window !== 'undefined' && window.SoundSniffRecognize) || null;
     if (!api) {
-      notify({ cmd: 'error', text: 'Tanıma servisi yüklenemedi.' });
+      notify({ cmd: 'error', key: 'service' });
       return;
     }
     api.recognizeBlob(blob, msg.name || 'capture.webm').then(function (r) {
       if (r.matched) {
-        saveMatch(r.song, r.backend === 'SongFinder' ? 'SongFinder ile bulundu' : 'AudD ile bulundu');
+        saveMatch(r.song, r.backend === 'SongFinder' ? 'songfinder' : 'audd');
       } else {
         notify({ cmd: 'no-result' });
       }
     }).catch(function (err) {
       console.error('SoundSniff recognize error:', err);
-      notify({ cmd: 'error', text: 'Bağlantı hatası. İnterneti kontrol edip tekrar dene.' });
+      notify({ cmd: 'error', key: 'network' });
     });
   }
 
-  function saveMatch(song, backendLabel) {
+  function saveMatch(song, backend) {
     var api = (typeof window !== 'undefined' && window.SoundSniffRecognize) || null;
     var safe = api ? api.isSafeUrl : function () { return false; };
     var entry = {
@@ -138,13 +138,13 @@
       h = h.slice(0, MAX_HISTORY);
       return browser.storage.local.set({
         history: h,
-        lastResult: { song: entry, backendLabel: backendLabel, at: Date.now() }
+        lastResult: { song: entry, backend: backend, at: Date.now() }
       });
     }).then(function () {
-      notify({ cmd: 'result', song: entry, backendLabel: backendLabel });
+      notify({ cmd: 'result', song: entry, backend: backend });
     }).catch(function (err) {
       console.error('SoundSniff save error:', err);
-      notify({ cmd: 'result', song: entry, backendLabel: backendLabel });
+      notify({ cmd: 'result', song: entry, backend: backend });
     });
   }
 })();

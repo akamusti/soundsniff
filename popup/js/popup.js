@@ -39,6 +39,16 @@
   var recordingLengthValue = $('recording-length-value');
   var historyList = $('history-list');
   var settingsSaved = $('settings-saved');
+  var languageSelect = $('language-select');
+  var aboutText = $('about-text');
+  var APP_VERSION = '1.3.0';
+
+  function t(key, vars) {
+    try {
+      if (typeof window.I18N !== 'undefined') return window.I18N.t(key, vars);
+    } catch (e) {}
+    return key;
+  }
 
   // ---------- State ----------
   var uiState = 'idle';
@@ -49,8 +59,9 @@
 
   // ---------- Init ----------
   function init() {
-    browser.storage.local.get(['history', 'apiToken', 'recordingLength', 'lastResult'])
+    browser.storage.local.get(['history', 'apiToken', 'recordingLength', 'lastResult', 'lang'])
       .then(function (data) {
+        applyLang(data.lang || 'en');
         if (Array.isArray(data.history)) history = data.history.slice(0, MAX_HISTORY);
         if (data.apiToken) apiTokenInput.value = data.apiToken;
         var len = parseInt(data.recordingLength, 10);
@@ -62,7 +73,7 @@
         // Arka planda biten iş varsa göster (örn. sekme kapalıyken)
         if (data.lastResult && data.lastResult.song &&
             (Date.now() - Number(data.lastResult.at || 0)) < 10 * 60 * 1000) {
-          showResult(data.lastResult.song, data.lastResult.backendLabel || '');
+          showResult(data.lastResult.song, backendLabel(data.lastResult.backend));
         }
         return browser.storage.local.remove('lastResult');
       })
@@ -71,6 +82,29 @@
       });
 
     setState('idle');
+  }
+
+  function applyLang(lang) {
+    try {
+      if (typeof window.I18N !== 'undefined') window.I18N.setLang(lang);
+    } catch (e) {}
+    if (languageSelect) languageSelect.value = (lang === 'tr') ? 'tr' : 'en';
+    if (aboutText) aboutText.textContent = t('about', { v: APP_VERSION });
+    // O anki durum metnini yeni dilde tazele
+    refreshStatusText();
+    renderHistory();
+  }
+
+  function refreshStatusText() {
+    var map = {
+      idle: 'status_idle', listening: 'status_listening', working: 'status_working',
+      result: 'status_found', noresult: 'status_noresult', error: 'status_error'
+    };
+    if (map[uiState]) statusText.textContent = t(map[uiState]);
+  }
+
+  function backendLabel(code) {
+    return t(code === 'songfinder' ? 'backend_sf' : 'backend_audd');
   }
 
   // ---------- Navigation ----------
@@ -97,6 +131,14 @@
   recordingLength.addEventListener('change', saveSettings);
   apiTokenInput.addEventListener('change', saveSettings);
 
+  if (languageSelect) {
+    languageSelect.addEventListener('change', function () {
+      var lang = (languageSelect.value === 'tr') ? 'tr' : 'en';
+      browser.storage.local.set({ lang: lang }).catch(function () {});
+      applyLang(lang);
+    });
+  }
+
   function saveSettings() {
     var len = parseInt(recordingLength.value, 10);
     if (!(len >= 5 && len <= 30)) len = 10;
@@ -120,20 +162,16 @@
   btnClearHistorySettings.addEventListener('click', clearHistory);
 
   // ---------- State machine ----------
-  var STRINGS = {
-    idle: 'Tanımak için dokun',
-    listening: 'Sekme dinleniyor…',
-    working: 'Tanımlanıyor…',
-    result: 'Bulundu',
-    noresult: 'Eşleşme yok',
-    error: 'Hata'
+  var STATE_KEYS = {
+    idle: 'status_idle', listening: 'status_listening', working: 'status_working',
+    result: 'status_found', noresult: 'status_noresult', error: 'status_error'
   };
 
   function setState(next, detail) {
     uiState = next;
     app.setAttribute('data-state', next);
 
-    statusText.textContent = (detail && detail.status) || STRINGS[next] || '';
+    statusText.textContent = (detail && detail.status) || t(STATE_KEYS[next] || 'status_idle');
     backendNote.textContent = (detail && detail.backend) || '';
 
     var live = (next === 'listening' || next === 'working' || next === 'result');
@@ -172,17 +210,17 @@
       browser.runtime.sendMessage({ cmd: 'capture-tab', durationSec: getDurationSec() })
         .catch(function () {
           capturing = false;
-          setState('error', { status: 'Eklenti arka planına ulaşılamadı.' });
+          setState('error', { status: t('un_bg') });
         });
     } catch (e) {
       capturing = false;
-      setState('error', { status: 'Eklenti arka planına ulaşılamadı.' });
+      setState('error', { status: t('un_bg') });
       return;
     }
     captureTimer = setTimeout(function () {
       if (capturing) {
         capturing = false;
-        setState('error', { status: 'Zaman aşımı. Tekrar dene.' });
+        setState('error', { status: t('un_timeout') });
       }
     }, CAPTURE_TIMEOUT_MS);
   }
@@ -213,16 +251,10 @@
   }
 
   // ---------- Background mesajları ----------
-  var UNAVAILABLE_MSGS = {
-    'no-media': 'Bu sekmede çalan ses bulunamadı. Müzik çalan sekmeye geç ya da mikrofonla dinle.',
-    'paused': 'Sekmedeki medya duraklatılmış görünüyor. Oynatıp tekrar dene.',
-    'silent': 'Sekmeden ses alınamadı (korumalı içerik olabilir). Mikrofonla dinlemeyi dene.',
-    'busy': 'Zaten bir kayıt sürüyor, bitmesini bekle.',
-    'restricted': 'Bu sayfada yakalama yapılamaz. Müzik çalan bir sekmeye geç.',
-    'no-tab': 'Aktif sekme bulunamadı.',
-    'reload': 'Sayfayı yenileyip tekrar dene.',
-    'unsupported': 'Bu sekmede kayıt desteklenmiyor. Mikrofonla dinlemeyi dene.',
-    'error': 'Kayıt alınamadı, tekrar dene.'
+  var UNAVAILABLE_KEYS = {
+    'no-media': 'un_no_media', 'paused': 'un_paused', 'silent': 'un_silent',
+    'busy': 'un_busy', 'restricted': 'un_restricted', 'no-tab': 'un_no_tab',
+    'reload': 'un_reload', 'unsupported': 'un_unsupported', 'error': 'un_error'
   };
 
   browser.runtime.onMessage.addListener(function (msg) {
@@ -233,19 +265,19 @@
       setState('working');
     } else if (msg.cmd === 'capture-unavailable') {
       capturing = false;
-      setState('error', { status: UNAVAILABLE_MSGS[msg.reason] || UNAVAILABLE_MSGS.error });
+      setState('error', { status: t(UNAVAILABLE_KEYS[msg.reason] || 'un_error') });
     } else if (msg.cmd === 'result') {
       capturing = false;
       if (msg.song) {
-        showResult(msg.song, msg.backendLabel || '');
+        showResult(msg.song, backendLabel(msg.backend));
         refreshHistoryFromStorage();
       }
     } else if (msg.cmd === 'no-result') {
       capturing = false;
-      setState('noresult', { status: 'Eşleşme bulunamadı' });
+      setState('noresult', { status: t('status_noresult') });
     } else if (msg.cmd === 'error') {
       capturing = false;
-      setState('error', { status: msg.text || 'Hata oldu.' });
+      setState('error', { status: msg.key ? t('err_' + msg.key) : (msg.text || t('status_error')) });
     } else if (msg.cmd === 'mic-result') {
       refreshHistoryFromStorage();
     }
@@ -262,13 +294,13 @@
   }
 
   // ---------- Sonuç ----------
-  function showResult(song, backendLabel) {
-    songArtist.textContent = song.artist || 'Bilinmeyen sanatçı';
-    songTitle.textContent = song.title || 'Bilinmeyen şarkı';
+  function showResult(song, backendText) {
+    songArtist.textContent = song.artist || t('unknown_artist');
+    songTitle.textContent = song.title || t('unknown_song');
     songMeta.textContent = [song.album].filter(Boolean).join(' · ');
     setArtwork(song.artwork);
     renderLinks(song);
-    setState('result', { status: 'Bulundu', backend: backendLabel });
+    setState('result', { status: t('status_found'), backend: backendText });
   }
 
   function setArtwork(url) {
@@ -293,7 +325,7 @@
     if (url) {
       var a = document.createElement('a');
       a.className = 'link-btn primary';
-      a.textContent = 'Şarkıyı aç';
+      a.textContent = t('open_song');
       a.href = url;
       a.target = '_blank';
       a.rel = 'noopener noreferrer';
@@ -313,8 +345,8 @@
         '<div class="empty-history">' +
         '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">' +
         '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>' +
-        '<span>Henüz şarkı tanınmadı</span>' +
-        '<small>Dinle düğmesine bas, çalan müziği bulalım</small>' +
+        '<span>' + escapeHtml(t('history_empty_t')) + '</span>' +
+        '<small>' + escapeHtml(t('history_empty_s')) + '</small>' +
         '</div>';
       return;
     }
@@ -331,7 +363,7 @@
         '<div class="history-info-artist">' + escapeHtml(item.artist) + '</div>' +
         '<div class="history-info-time">' + escapeHtml(formatTime(item.timestamp)) + '</div>' +
         '</div>' +
-        '<button class="history-delete" data-index="' + i + '" title="Kaldır">' +
+        '<button class="history-delete" data-index="' + i + '" title="' + escapeAttr(t('remove')) + '">' +
         '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
         '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
         '</button></div>'
@@ -360,13 +392,13 @@
 
   // ---------- Helpers ----------
   function formatTime(ts) {
-    var t = Number(ts);
-    if (!t) return '';
-    var diff = Date.now() - t;
-    if (diff < 60000) return 'az önce';
-    if (diff < 3600000) return Math.floor(diff / 60000) + ' dk önce';
-    if (diff < 86400000) return Math.floor(diff / 3600000) + ' sa önce';
-    return new Date(t).toLocaleDateString();
+    var time = Number(ts);
+    if (!time) return '';
+    var diff = Date.now() - time;
+    if (diff < 60000) return t('t_now');
+    if (diff < 3600000) return t('t_min', { n: Math.floor(diff / 60000) });
+    if (diff < 86400000) return t('t_hr', { n: Math.floor(diff / 3600000) });
+    return new Date(time).toLocaleDateString();
   }
 
   function escapeHtml(str) {

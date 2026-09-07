@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,20 +12,20 @@
         <img class="brand-logo" src="../icons/icon-48.png" alt="SoundSniff" width="28" height="28">
         <div class="brand-text">
           <h1 class="title">SoundSniff</h1>
-          <span class="subtitle">Sekmedeki müziği tanı</span>
+          <span class="subtitle" data-i18n="subtitle">Recognize music in your tab</span>
         </div>
       </div>
       <div class="header-actions">
-        <button id="btn-history" class="icon-btn" title="Geçmiş">
+        <button id="btn-history" class="icon-btn" data-i18n-title="nav_history" title="History">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="10"/>
             <polyline points="12 6 12 12 16 14"/>
           </svg>
         </button>
-        <button id="btn-settings" class="icon-btn" title="Ayarlar">
+        <button id="btn-settings" class="icon-btn" data-i18n-title="nav_settings" title="Settings">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="3"/>
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1 2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
           </svg>
         </button>
       </div>
@@ -34,12 +34,12 @@
     <main id="screen-main" class="screen active">
       <div class="status-pill" id="status-pill">
         <span class="status-dot" id="status-dot"></span>
-        <span id="status-text">Dinlemek için dokun</span>
+        <span id="status-text">Tap to recognize</span>
       </div>
 
       <div class="stage">
         <div class="disc" id="disc">
-          <img id="disc-img" class="disc-img hidden" alt="Albüm kapağı">
+          <img id="disc-img" class="disc-img hidden" alt="Album artwork">
           <div class="disc-fallback" id="disc-fallback">
             <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4">
               <path d="M9 18V5l12-2v13"/>
@@ -57,14 +57,14 @@
           <div class="song-title" id="song-title"></div>
           <div class="song-meta" id="song-meta"></div>
           <div class="song-links hidden" id="song-links"></div>
-          <button class="retry-btn hidden" id="btn-retry">Tekrar dene</button>
+          <button class="retry-btn hidden" id="btn-retry" data-i18n="retry">Try again</button>
         </div>
       </div>
 
       <div class="controls">
         <div class="controls-row">
           <span class="controls-spacer"></span>
-          <button id="btn-listen" class="listen-btn" title="Sekmedeki müziği tanı">
+          <button id="btn-listen" class="listen-btn" data-i18n-title="listen_title" title="Recognize music in the tab">
             <span class="listen-btn-ring"></span>
             <span class="listen-btn-ring delay"></span>
             <span class="listen-btn-inner">
@@ -75,7 +75,7 @@
               </svg>
             </span>
           </button>
-          <button id="btn-mic" class="mic-btn" title="Mikrofonla dinle (yeni sekmede açılır)">
+          <button id="btn-mic" class="mic-btn" data-i18n-title="mic_title" title="Listen with microphone (opens in a new tab)">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/>
             </svg>
@@ -87,13 +87,13 @@
 
     <main id="screen-history" class="screen">
       <div class="sub-header">
-        <button id="btn-back-history" class="icon-btn" title="Geri">
+        <button id="btn-back-history" class="icon-btn" data-i18n-title="back" title="Back">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="15 18 9 12 15 6"/>
           </svg>
         </button>
-        <h2>Geçmiş</h2>
-        <button id="btn-clear-history" class="icon-btn danger" title="Geçmişi temizle">
+        <h2 data-i18n="nav_history">History</h2>
+        <button id="btn-clear-history" class="icon-btn danger" data-i18n-title="hist_clear" title="Clear history">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="3 6 5 6 21 6"/>
             <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
@@ -105,36 +105,44 @@
 
     <main id="screen-settings" class="screen">
       <div class="sub-header">
-        <button id="btn-back-settings" class="icon-btn" title="Geri">
+        <button id="btn-back-settings" class="icon-btn" data-i18n-title="back" title="Back">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="15 18 9 12 15 6"/>
           </svg>
         </button>
-        <h2>Ayarlar</h2>
-        <span class="settings-saved" id="settings-saved">Kaydedildi</span>
+        <h2 data-i18n="nav_settings">Settings</h2>
+        <span class="settings-saved" id="settings-saved" data-i18n="settings_saved">Saved</span>
       </div>
 
       <div class="settings-content">
         <div class="setting-group">
-          <label class="setting-label" for="api-token-input">AudD API anahtarı <em>(isteğe bağlı)</em></label>
+          <label class="setting-label" for="language-select" data-i18n="lang_label">Language</label>
+          <select id="language-select" class="setting-select">
+            <option value="en">English</option>
+            <option value="tr">Türkçe</option>
+          </select>
+        </div>
+
+        <div class="setting-group">
+          <label class="setting-label" for="api-token-input"><span data-i18n="token_label">AudD API key</span> <em data-i18n="token_opt">(optional)</em></label>
           <p class="setting-desc">
-            Boş bırakırsan ücretsiz kotayla çalışır. Daha fazla tanıma için
+            <span data-i18n="token_desc">Leave empty to use the free quota. For more recognitions, get a free key at</span>
             <a href="https://dashboard.audd.io" target="_blank" rel="noopener">dashboard.audd.io</a>
-            adresinden ücretsiz anahtar alıp buraya yapıştırabilirsin.
           </p>
           <input
             type="text"
             id="api-token-input"
             class="setting-input"
-            placeholder="Boş bırakılabilir"
+            data-i18n-ph="token_ph"
+            placeholder="Can be left empty"
             autocomplete="off"
             spellcheck="false"
           >
         </div>
 
         <div class="setting-group">
-          <label class="setting-label" for="recording-length">Kayıt süresi</label>
-          <p class="setting-desc">Uzun kayıtlar genelde daha isabetli sonuç verir.</p>
+          <label class="setting-label" for="recording-length" data-i18n="reclen_label">Recording length</label>
+          <p class="setting-desc" data-i18n="reclen_desc">Longer recordings usually give more accurate results.</p>
           <div class="range-wrapper">
             <input
               type="range"
@@ -150,19 +158,20 @@
         </div>
 
         <div class="setting-group">
-          <label class="setting-label">Geçmiş</label>
-          <button id="btn-clear-history-settings" class="btn-secondary danger">
-            Geçmişi temizle
+          <label class="setting-label" data-i18n="hist_label">History</label>
+          <button id="btn-clear-history-settings" class="btn-secondary danger" data-i18n="hist_clear">
+            Clear history
           </button>
         </div>
 
         <div class="setting-group about">
-          <p class="about-text">SoundSniff 1.2.1 · Tanıma: AudD + SongFinder</p>
+          <p class="about-text" id="about-text">SoundSniff 1.3.0 · Recognition: AudD + SongFinder</p>
         </div>
       </div>
     </main>
   </div>
 
+  <script src="../js/i18n.js"></script>
   <script src="js/popup.js"></script>
 </body>
 </html>
