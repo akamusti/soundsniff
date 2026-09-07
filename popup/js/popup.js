@@ -217,7 +217,6 @@
     'no-media': 'Bu sekmede çalan ses bulunamadı. Müzik çalan sekmeye geç ya da mikrofonla dinle.',
     'paused': 'Sekmedeki medya duraklatılmış görünüyor. Oynatıp tekrar dene.',
     'silent': 'Sekmeden ses alınamadı (korumalı içerik olabilir). Mikrofonla dinlemeyi dene.',
-    'hooked': 'Sekme sesi başka şekilde yakalanmış. Sayfayı yenileyip tekrar dene.',
     'busy': 'Zaten bir kayıt sürüyor, bitmesini bekle.',
     'restricted': 'Bu sayfada yakalama yapılamaz. Müzik çalan bir sekmeye geç.',
     'no-tab': 'Aktif sekme bulunamadı.',
