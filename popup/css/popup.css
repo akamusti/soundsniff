@@ -672,3 +672,6 @@ body {
 
 .about { text-align: center; }
 .about-text { font-size: 11px; color: var(--faint); }
+.about-credit { font-size: 11px; color: var(--faint); margin-top: 3px; }
+.about-credit a { color: inherit; text-decoration: none; }
+.about-credit a:hover { color: var(--cream); text-decoration: underline; }

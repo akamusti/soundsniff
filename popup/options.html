@@ -177,6 +177,23 @@
       outline: 2px solid #00d4ff;
       outline-offset: 2px;
     }
+
+    .credit {
+      margin-top: 8px;
+      text-align: center;
+      font-size: 11px;
+      color: #5a6f8a;
+    }
+
+    .credit a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .credit a:hover {
+      color: #ffffff;
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
@@ -221,6 +238,8 @@
   <div class="setting-group">
     <button id="save" data-i18n="opt_save">Save Settings</button>
   </div>
+
+  <p class="credit">by <a href="https://github.com/akamusti/soundsniff" target="_blank" rel="noopener">akamusti</a></p>
 
   <script src="../js/i18n.js"></script>
   <script src="js/options.js"></script>
