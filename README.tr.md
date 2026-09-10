@@ -6,8 +6,10 @@ Firefox (ve forkları) için Shazam tarzı müzik tanıma eklentisi. Sekmede ça
 
 ## Kurulum
 
-1. `about:debugging#/runtime/this-firefox` adresini aç
-2. "Geçici Eklenti Yükle" → `manifest.json` dosyasını seç
+- Firefox Eklentileri: https://addons.mozilla.org/en-US/firefox/addon/soundsniff/
+- Ya da elle:
+  1. `about:debugging#/runtime/this-firefox` adresini aç
+  2. "Geçici Eklenti Yükle" → `manifest.json` dosyasını seç
 
 ## Kullanım
 

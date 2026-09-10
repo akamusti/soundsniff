@@ -6,8 +6,10 @@ Shazam-style music recognition add-on for Firefox (and forks). Finds the song pl
 
 ## Install
 
-1. Open `about:debugging#/runtime/this-firefox`
-2. "Load Temporary Add-on" → select `manifest.json`
+- Firefox Add-ons: https://addons.mozilla.org/en-US/firefox/addon/soundsniff/
+- Or manually:
+  1. Open `about:debugging#/runtime/this-firefox`
+  2. "Load Temporary Add-on" → select `manifest.json`
 
 ## Usage
 
