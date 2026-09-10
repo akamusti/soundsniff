@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "SoundSniff",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Identify music playing around you - Shazam alternative for Firefox",
   "author": "SoundSniff",
 
