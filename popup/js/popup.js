@@ -37,11 +37,12 @@
   var apiTokenInput = $('api-token-input');
   var recordingLength = $('recording-length');
   var recordingLengthValue = $('recording-length-value');
+  var autostartCheckbox = $('autostart-checkbox');
   var historyList = $('history-list');
   var settingsSaved = $('settings-saved');
   var languageSelect = $('language-select');
   var aboutText = $('about-text');
-  var APP_VERSION = '1.3.2';
+  var APP_VERSION = '1.4.0';
 
   function t(key, vars) {
     try {
@@ -59,7 +60,7 @@
 
   // ---------- Init ----------
   function init() {
-    browser.storage.local.get(['history', 'apiToken', 'recordingLength', 'lastResult', 'lang'])
+    browser.storage.local.get(['history', 'apiToken', 'recordingLength', 'lastResult', 'lang', 'autoStart'])
       .then(function (data) {
         applyLang(data.lang || 'en');
         if (Array.isArray(data.history)) history = data.history.slice(0, MAX_HISTORY);
@@ -69,11 +70,23 @@
           recordingLength.value = String(len);
           recordingLengthValue.textContent = len + 's';
         }
+        // Güvenlik: varsayılan açık, ama kullanıcı tek tıkla kapatabilir.
+        // Kayıt yalnızca kullanıcı araç çubuğuna basıp popup'ı açtığında başlar;
+        // arka planda asla kendiliğinden kayıt yapılmaz.
+        var autoStart = (typeof data.autoStart === 'undefined') ? true : !!data.autoStart;
+        if (autostartCheckbox) autostartCheckbox.checked = autoStart;
         renderHistory();
-        // Arka planda biten iş varsa göster (örn. sekme kapalıyken)
+        // Arka planda biten iş varsa göster (örn. popup kapanmışken biten tanıma).
+        // Bu durumda kota yakmamak ve sonucu ezmemek için oto-başlatma yapma.
         if (data.lastResult && data.lastResult.song &&
             (Date.now() - Number(data.lastResult.at || 0)) < 10 * 60 * 1000) {
           showResult(data.lastResult.song, backendLabel(data.lastResult.backend));
+        } else if (autoStart) {
+          // Shazam/LibreZ Modu: popup açılır açılmaz tek seferlik oto-dinleme.
+          // Popup her açılışta en fazla 1 istek atar; tekrar döngüsü yoktur.
+          setTimeout(function () {
+            if (uiState === 'idle' && !capturing) startCapture();
+          }, 150);
         }
         return browser.storage.local.remove('lastResult');
       })
@@ -130,6 +143,7 @@
 
   recordingLength.addEventListener('change', saveSettings);
   apiTokenInput.addEventListener('change', saveSettings);
+  if (autostartCheckbox) autostartCheckbox.addEventListener('change', saveSettings);
 
   if (languageSelect) {
     languageSelect.addEventListener('change', function () {
@@ -144,7 +158,8 @@
     if (!(len >= 5 && len <= 30)) len = 10;
     browser.storage.local.set({
       apiToken: apiTokenInput.value.trim(),
-      recordingLength: len
+      recordingLength: len,
+      autoStart: autostartCheckbox ? !!autostartCheckbox.checked : true
     }).then(function () {
       settingsSaved.classList.add('show');
       setTimeout(function () { settingsSaved.classList.remove('show'); }, 1600);

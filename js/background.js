@@ -6,10 +6,11 @@
   var MAX_HISTORY = 50;
 
   browser.runtime.onInstalled.addListener(function () {
-    browser.storage.local.get(['history', 'recordingLength']).then(function (data) {
+    browser.storage.local.get(['history', 'recordingLength', 'autoStart']).then(function (data) {
       var patch = {};
       if (!Array.isArray(data.history)) patch.history = [];
       if (!(parseInt(data.recordingLength, 10) >= 5)) patch.recordingLength = 10;
+      if (typeof data.autoStart === 'undefined') patch.autoStart = true;
       if (Object.keys(patch).length) return browser.storage.local.set(patch);
       return null;
     }).catch(function (err) {

@@ -553,6 +553,23 @@ body {
 
 .setting-select:focus { border-color: var(--fox); }
 
+.switch-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--cream);
+  cursor: pointer;
+  user-select: none;
+}
+
+.setting-check {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--fox);
+  cursor: pointer;
+}
+
 .range-wrapper { display: flex; align-items: center; gap: 12px; }
 
 .setting-range {

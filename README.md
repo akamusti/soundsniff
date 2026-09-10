@@ -11,7 +11,8 @@ Shazam-style music recognition add-on for Firefox (and forks). Finds the song pl
 
 ## Usage
 
-- On a tab playing music, press the orange button. It listens 5–30s — no permission prompt needed.
+- Click the toolbar button: it starts listening automatically (Shazam-style, no second click needed). Disable in Settings → "Auto-listen on open" if you prefer manual.
+- On a tab playing music, it listens 5–30s — no permission prompt needed.
 - For room audio, the mic button opens a separate tab where the permission works.
 - Result: artist, title, artwork, listen link.
 - Results are kept in History (50 entries).
@@ -26,5 +27,6 @@ Shazam-style music recognition add-on for Firefox (and forks). Finds the song pl
 ## Privacy
 
 - Audio is sent only for recognition, never stored.
+- Auto-listen runs only after you click the toolbar button; never records in the background.
 - No telemetry, no accounts.
 - Least privilege: `storage`, `activeTab` and `scripting` only.

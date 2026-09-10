@@ -6,6 +6,7 @@
   var lengthVal = document.getElementById('length-val');
   var saveBtn = document.getElementById('save');
   var langSelect = document.getElementById('lang');
+  var autostartInput = document.getElementById('autostart');
 
   if (!tokenInput || !lengthInput || !lengthVal || !saveBtn) {
     return;
@@ -30,19 +31,21 @@
     });
   }
 
-  browser.storage.local.get(['apiToken', 'recordingLength', 'lang']).then(function (data) {
+  browser.storage.local.get(['apiToken', 'recordingLength', 'lang', 'autoStart']).then(function (data) {
     if (data.apiToken) tokenInput.value = data.apiToken;
     if (data.recordingLength) {
       lengthInput.value = data.recordingLength;
       lengthVal.textContent = data.recordingLength + 's';
     }
+    if (autostartInput) autostartInput.checked = (typeof data.autoStart === 'undefined') ? true : !!data.autoStart;
     applyLang(data.lang || 'en');
   }).catch(function (err) { console.error('SoundSniff options load error:', err); });
 
   saveBtn.addEventListener('click', function () {
     var payload = {
       apiToken: tokenInput.value.trim(),
-      recordingLength: parseInt(lengthInput.value, 10) || 10
+      recordingLength: parseInt(lengthInput.value, 10) || 10,
+      autoStart: autostartInput ? !!autostartInput.checked : true
     };
     if (langSelect) payload.lang = (langSelect.value === 'tr') ? 'tr' : 'en';
     browser.storage.local.set(payload).then(function () {
