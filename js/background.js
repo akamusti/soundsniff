@@ -119,6 +119,16 @@
     });
   }
 
+  function cleanLinks(links, safe) {
+    var out = { spotify: '', apple: '', deezer: '', youtube: '' };
+    if (!links) return out;
+    ['spotify', 'apple', 'deezer', 'youtube'].forEach(function (k) {
+      var v = links[k];
+      if (typeof v === 'string' && safe(v)) out[k] = v.slice(0, 500);
+    });
+    return out;
+  }
+
   function saveMatch(song, backend) {
     var api = (typeof window !== 'undefined' && window.SoundSniffRecognize) || null;
     var safe = api ? api.isSafeUrl : function () { return false; };
@@ -128,6 +138,7 @@
       album: String(song.album || '').slice(0, 200),
       link: safe(song.link) ? song.link : '',
       artwork: safe(song.artwork) ? song.artwork : '',
+      links: cleanLinks(song.links, safe),
       timestamp: Date.now()
     };
     browser.storage.local.get(['history']).then(function (data) {

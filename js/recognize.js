@@ -51,8 +51,14 @@
             matched: true,
             song: {
               artist: d.artist || '', title: d.title || '', album: d.album || '',
-              link: d.songLink || d.spotifyUrl || d.appleMusicUrl || '',
-              artwork: d.artworkUrl || '', extra: ''
+              link: d.songLink || d.spotifyUrl || d.appleMusicUrl || d.youtubeUrl || d.youtube || '',
+              artwork: d.artworkUrl || '', extra: '',
+              links: {
+                spotify: d.spotifyUrl || '',
+                apple: d.appleMusicUrl || '',
+                deezer: d.deezerUrl || '',
+                youtube: d.youtubeUrl || d.youtube || ''
+              }
             }
           };
         }
@@ -75,33 +81,46 @@
   }
 
   function normalizeAudd(r) {
+    r = r || {};
     var artist = r.artist || '';
     var title = r.title || '';
     var album = r.album || '';
     var link = r.song_link || '';
     var artwork = '';
     var bits = [];
+    var links = { spotify: '', apple: '', deezer: '', youtube: '' };
 
     try {
       if (r.spotify && r.spotify.album && r.spotify.album.images && r.spotify.album.images.length) {
         artwork = r.spotify.album.images[0].url || '';
-        if (!link && r.spotify.external_urls && r.spotify.external_urls.spotify) {
-          link = r.spotify.external_urls.spotify;
-        }
+      }
+      if (r.spotify && r.spotify.external_urls && r.spotify.external_urls.spotify) {
+        links.spotify = String(r.spotify.external_urls.spotify);
+        if (!link) link = links.spotify;
       }
       if (!artwork && r.apple_music && r.apple_music.artwork && r.apple_music.artwork.url) {
         artwork = String(r.apple_music.artwork.url).replace('{w}x{h}', '300x300');
-        if (!link && r.apple_music.url) link = r.apple_music.url;
+      }
+      if (r.apple_music && r.apple_music.url) {
+        links.apple = String(r.apple_music.url);
+        if (!link) link = links.apple;
       }
       if (!artwork && r.deezer) {
         artwork = r.deezer.cover_medium || r.deezer.cover || '';
-        if (!link && r.deezer.link) link = r.deezer.link;
+      }
+      if (r.deezer && r.deezer.link) {
+        links.deezer = String(r.deezer.link);
+        if (!link) link = links.deezer;
+      }
+      if (r.youtube && r.youtube.url) {
+        links.youtube = String(r.youtube.url);
+        if (!link) link = links.youtube;
       }
       if (r.release_date) bits.push(String(r.release_date).slice(0, 4));
       if (r.label) bits.push(r.label);
     } catch (e) { /* ignore */ }
 
-    return { artist: artist, title: title, album: album, link: link, artwork: artwork, extra: bits.join(' · ') };
+    return { artist: artist, title: title, album: album, link: link, artwork: artwork, extra: bits.join(' · '), links: links };
   }
 
   function isSafeUrl(url) {

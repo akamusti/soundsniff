@@ -153,8 +153,15 @@
       album: String(song.album || '').slice(0, 200),
       link: safe(song.link) ? song.link : '',
       artwork: safe(song.artwork) ? song.artwork : '',
+      links: { spotify: '', apple: '', deezer: '', youtube: '' },
       timestamp: Date.now()
     };
+    if (song.links) {
+      ['spotify', 'apple', 'deezer', 'youtube'].forEach(function (k) {
+        var v = song.links[k];
+        if (typeof v === 'string' && safe(v)) entry.links[k] = v.slice(0, 500);
+      });
+    }
     browser.storage.local.get(['history']).then(function (data) {
       var h = Array.isArray(data.history) ? data.history : [];
       h = h.filter(function (x) { return !(x.artist === entry.artist && x.title === entry.title); });

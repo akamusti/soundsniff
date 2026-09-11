@@ -16,7 +16,7 @@ Shazam-style music recognition add-on for Firefox (and forks). Finds the song pl
 - Click the toolbar button: it starts listening automatically (Shazam-style, no second click needed). Disable in Settings → "Auto-listen on open" if you prefer manual.
 - On a tab playing music, it listens 5–30s — no permission prompt needed.
 - For room audio, the mic button opens a separate tab where the permission works.
-- Result: artist, title, artwork, listen link.
+- Result: artist, title, artwork, streaming links (Spotify, Apple Music, Deezer, YouTube).
 - Results are kept in History (50 entries).
 - Default language is English; switch to Turkish in Settings.
 

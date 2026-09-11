@@ -42,7 +42,7 @@
   var settingsSaved = $('settings-saved');
   var languageSelect = $('language-select');
   var aboutText = $('about-text');
-  var APP_VERSION = '1.5.0';
+  var APP_VERSION = '1.6.0';
 
   function t(key, vars) {
     try {
@@ -313,6 +313,13 @@
   }
 
   // ---------- Sonuç ----------
+  var PROVIDERS = [
+    { key: 'spotify', name: 'Spotify' },
+    { key: 'apple', name: 'Apple Music' },
+    { key: 'deezer', name: 'Deezer' },
+    { key: 'youtube', name: 'YouTube' }
+  ];
+
   function showResult(song, backendText) {
     songArtist.textContent = song.artist || t('unknown_artist');
     songTitle.textContent = song.title || t('unknown_song');
@@ -348,12 +355,39 @@
       a.href = url;
       a.target = '_blank';
       a.rel = 'noopener noreferrer';
-      a.addEventListener('click', function (e) {
-        e.preventDefault();
-        browser.tabs.create({ url: url });
-      });
+      a.addEventListener('click', (function (u) {
+        return function (e) {
+          e.preventDefault();
+          browser.tabs.create({ url: u });
+        };
+      })(url));
       songLinks.appendChild(a);
     }
+    // LibreZam tarzi ama daha modern: platforma ozel saglayici cipleri.
+    // Yalnizca API'nin dondurdugu gercek URL'ler gosterilir, uydurma link yok.
+    var infos = (song && song.links) || {};
+    var chips = document.createElement('div');
+    chips.className = 'song-providers';
+    var any = false;
+    PROVIDERS.forEach(function (p) {
+      var u = infos[p.key];
+      if (!isSafeUrl(u) || u === url) return;
+      var c = document.createElement('a');
+      c.className = 'provider-chip provider-' + p.key;
+      c.textContent = p.name;
+      c.href = u;
+      c.target = '_blank';
+      c.rel = 'noopener noreferrer';
+      c.addEventListener('click', (function (target) {
+        return function (e) {
+          e.preventDefault();
+          browser.tabs.create({ url: target });
+        };
+      })(u));
+      chips.appendChild(c);
+      any = true;
+    });
+    if (any) songLinks.appendChild(chips);
     songLinks.classList.remove('hidden');
   }
 

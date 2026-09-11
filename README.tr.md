@@ -16,7 +16,7 @@ Firefox (ve forkları) için Shazam tarzı müzik tanıma eklentisi. Sekmede ça
 - Araç çubuğu düğmesine bas: Shazam gibi otomatik dinlemeye başlar, ikinci kez basman gerekmez. İstersen Ayarlar → "Açılınca otomatik dinle" seçeneğinden kapatabilirsin.
 - Müzik çalan sekmede 5–30 sn dinler, izin penceresi çıkmaz.
 - Odadaki ses için mikrofon düğmesi ayrı sekme açar, izin orada verilir.
-- Sonuç: sanatçı, şarkı, kapak, dinleme bağlantısı.
+- Sonuç: sanatçı, şarkı, kapak, dinleme bağlantıları (Spotify, Apple Music, Deezer, YouTube).
 - Sonuçlar Geçmiş'te saklanır (50 adet).
 - Varsayılan dil İngilizce; Ayarlar'dan Türkçe'ye geçilebilir.
 
