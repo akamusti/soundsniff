@@ -42,7 +42,7 @@
   var settingsSaved = $('settings-saved');
   var languageSelect = $('language-select');
   var aboutText = $('about-text');
-  var APP_VERSION = '1.4.4';
+  var APP_VERSION = '1.5.0';
 
   function t(key, vars) {
     try {
