@@ -177,7 +177,15 @@ body {
     0 0 0 1px var(--line),
     0 18px 44px rgba(0, 0, 0, 0.5);
   overflow: hidden;
-  transition: box-shadow 0.3s ease;
+  transition: width 0.3s ease, height 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Sonuc gelince kapak kuculur, yazi + linklere yer acilir */
+.app[data-state="result"] .disc,
+.app[data-state="noresult"] .disc,
+.app[data-state="error"] .disc {
+  width: 148px;
+  height: 148px;
 }
 
 /* Plak yivi: ince halka */
