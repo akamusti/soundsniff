@@ -28,9 +28,13 @@ same.
 
 - Turn it on with the loop button next to the microphone, or in Settings.
 - **Off by default.** It records in the background only while you have it on.
-- It re-checks roughly every 20–45 seconds. If the same track comes back it stays
-  quiet and keeps watching; when a new track appears it is added to History
-  immediately.
+- It re-checks roughly every 20–45 seconds, but compares the audio locally first.
+  If the sound has not changed, **no recognition request is sent and no quota is
+  used**. Only an actual change costs a request, so continuous listening works out
+  to roughly one request per track instead of one per check.
+- Every fifth unchanged check is still sent as a safety net, so a pair of
+  spectrally similar tracks can never hide a change for long. The count of
+  checks answered locally is shown in Settings.
 - It pauses itself when there is no music in the tab, when nothing matches
   several times in a row, or when the recognition service rate-limits us.
 - Every check costs one recognition from your daily quota, so it stops by itself

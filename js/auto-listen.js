@@ -54,6 +54,7 @@
       currentArtist: '',
       currentTitle: '',
       found: 0,
+      skipped: 0,
       lastPump: 0,
       resumeAt: 0
     };
@@ -77,6 +78,7 @@
     s.misses = Math.max(0, parseInt(s.misses, 10) || 0);
     s.captureFails = Math.max(0, parseInt(s.captureFails, 10) || 0);
     s.found = Math.max(0, parseInt(s.found, 10) || 0);
+    s.skipped = Math.max(0, parseInt(s.skipped, 10) || 0);
     return s;
   }
 
@@ -117,6 +119,7 @@
       used: s.used,
       budget: s.budget,
       found: s.found,
+      skipped: s.skipped || 0,
       artist: s.currentArtist || '',
       title: s.currentTitle || ''
     };
@@ -348,6 +351,16 @@
 
     // Yakalama basarili -> background bir tanima istegi harcadi.
     s.captureFails = 0;
+
+    // Ses yerelde ayni goruldu ve API'ye hic gidilmedi. Bu bir basarisizlik
+    // degil, dongunun calistiginin isareti: kotadan 1 istek tasarruf edildi.
+    if (res.sameAudio) {
+      s.misses = 0;
+      s.skipped = (s.skipped || 0) + 1;
+      s.status = 'listening';
+      s.reason = 'stable';
+      return save(s).then(function () { schedule(GAP_MATCH_MS); });
+    }
 
     if (res.limited) {
       return pauseAndSchedule(s, 'limited', GAP_MISS_MS);

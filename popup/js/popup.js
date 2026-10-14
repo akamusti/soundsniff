@@ -51,7 +51,7 @@
   var settingsSaved = $('settings-saved');
   var languageSelect = $('language-select');
   var aboutText = $('about-text');
-  var APP_VERSION = '1.7.0';
+  var APP_VERSION = '1.7.1';
 
   function t(key, vars) {
     try {
@@ -66,7 +66,7 @@
   var captureTimer = null;
   var errorTimer = null;
   var history = [];
-  var autoState = { enabled: false, status: 'off', reason: '', used: 0, budget: 10, found: 0, artist: '', title: '' };
+  var autoState = { enabled: false, status: 'off', reason: '', used: 0, budget: 10, found: 0, skipped: 0, artist: '', title: '' };
   var budgetDirty = false;
 
   // ---------- Init ----------
@@ -169,6 +169,7 @@ var PAUSE_KEYS = {
       used: parseInt(s.used, 10) || 0,
       budget: (b >= 3 && b <= 60) ? b : 10,
       found: parseInt(s.found, 10) || 0,
+      skipped: parseInt(s.skipped, 10) || 0,
       artist: String(s.artist || ''),
       title: String(s.title || '')
     };
@@ -186,7 +187,11 @@ var PAUSE_KEYS = {
     }
     if (autolistenBudgetValue) autolistenBudgetValue.textContent = String(autoState.budget);
     if (autolistenBudgetNote) {
-      autolistenBudgetNote.textContent = t('auto_budget_val', { used: autoState.used, max: autoState.budget });
+      var note = t('auto_budget_val', { used: autoState.used, max: autoState.budget });
+      // Kac kontrolun API'ye gitmeden yerelde elendigi: kotanin gercekten
+      // korundugunun gorunur kaniti.
+      if (autoState.skipped > 0) note += ' · ' + t('auto_skipped_note', { s: autoState.skipped });
+      autolistenBudgetNote.textContent = note;
     }
 
     if (!autoState.enabled) { autoBar.classList.add('hidden'); return; }

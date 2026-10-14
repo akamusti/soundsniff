@@ -28,8 +28,14 @@ bunu yapabiliyor.
 
 - Mikrofon düğmesinin yanındaki döngü düğmesiyle ya da Ayarlar'dan açılır.
 - **Varsayılan kapalı.** Yalnızca sen açtığında arka planda kayıt yapar.
-- Yaklaşık 20–45 saniyede bir kontrol eder. Aynı şarkı gelirse sessiz kalır ve
-  izlemeye devam eder; yeni şarkı çaldığında anında Geçmiş'e eklenir.
+- Yaklaşık 20–45 saniyede bir kontrol eder, ama önce sesi **yerelde** karşılaştırır.
+  Ses değişmediyse **hiç tanıma isteği gönderilmez, kotadan da düşülmez**. Yalnızca
+  gerçek bir değişiklik isteye mal olur; böylece sürekli dinleme, her kontrolde bir
+  istek yerine **şarkı başına yaklaşık bir istek** demektir.
+- Beş değişmeyen kontrolün birinde yine de istek gönderilir; spektral olarak
+  benzeyen iki parça birbirini uzun süre gizleyemez. Yerelde yanıtlanan kontrol
+  sayısı Ayarlar'da gösterilir.
+- Yeni şarkı çaldığında anında Geçmiş'e eklenir.
 - Sekmede müzik yoksa, üst üste eşleşme bulunamazsa ya da tanıma servisi istek
   sınırına takılırsa kendiliğinden duraklar.
 - Her kontrol günlük kotandan bir tanıma harcar; bu yüzden Ayarlar →

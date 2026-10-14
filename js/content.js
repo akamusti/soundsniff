@@ -30,6 +30,7 @@
           buffer: res.buffer
         };
         if (reqId) { audio.id = reqId; audio.expectedKey = expected; }
+        if (res.signature) audio.signature = res.signature;
         browser.runtime.sendMessage(audio).catch(function () { /* popup/background kapalıysa sorun değil */ });
       } else {
         var failed = {
@@ -118,10 +119,12 @@
       // Bu, öğenin ses yoluna dokunmaz; analiz context'i kapatılabilir.
       var analyser = null;
       var analysisCtx = null;
+      var sigSampleRate = 44100;
       try {
         var AC = window.AudioContext || window.webkitAudioContext;
         if (AC) {
           analysisCtx = new AC();
+          sigSampleRate = analysisCtx.sampleRate || 44100;
           var tap = analysisCtx.createMediaStreamSource(combined);
           analyser = analysisCtx.createAnalyser();
           analyser.fftSize = 2048;
@@ -150,6 +153,29 @@
       var peak = 0;
       var buf = analyser ? new Uint8Array(analyser.fftSize) : null;
       var probe = null;
+
+      // Yerel parmakizi: kayıt boyunca FFT karelerini topla. Ses kaydı
+      // bittikten sonra js/signature.js bunları sıkıştırıp imzaya çeviriyor.
+      // İmza, "ses değişti mi" sorusunu API'ye sormadan cevaplamak için
+      // kullanılıyor; ses dosyasının kendisi hiçbir yere gönderilmiyor.
+      var sigApi = (typeof window !== 'undefined' && window.SoundSniffSignature) || null;
+      var frameMs = sigApi ? sigApi.FRAME_MS : 100;
+      var freqBuf = null;
+      var frames = null;
+      var frameTimer = null;
+      if (analyser && sigApi) {
+        try {
+          freqBuf = new Uint8Array(analyser.frequencyBinCount);
+          frames = [];
+          frameTimer = setInterval(function () {
+            try {
+              analyser.getByteFrequencyData(freqBuf);
+              frames.push(new Uint8Array(freqBuf)); // kopyala, tamponu yeniden kullan
+            } catch (e) { /* ignore */ }
+          }, frameMs);
+        } catch (e) { freqBuf = null; frames = null; frameTimer = null; }
+      }
+
       if (analyser) {
         probe = setInterval(function () {
           try {
@@ -164,10 +190,21 @@
 
       function closeAnalysis() {
         if (probe) { clearInterval(probe); probe = null; }
+        if (frameTimer) { clearInterval(frameTimer); frameTimer = null; }
         if (analysisCtx) {
           try { analysisCtx.close(); } catch (e) {}
           analysisCtx = null;
         }
+      }
+
+      function buildSignature() {
+        if (!frames || !frames.length || !sigApi) return null;
+        try {
+          return sigApi.build(frames, {
+            sampleRate: sigSampleRate,
+            fftSize: analyser ? analyser.fftSize : 2048
+          });
+        } catch (e) { return null; }
       }
 
       function finishOk() {
@@ -177,12 +214,19 @@
         cleanup();
         if (!blob.size) { resolve({ ok: false, reason: 'silent' }); return; }
         if (analyser && peak < 2) { resolve({ ok: false, reason: 'silent' }); return; } // DRM/sessiz
+        var signature = buildSignature();
         blob.arrayBuffer().then(function (ab) {
           if (!ab || !ab.byteLength || ab.byteLength > 8 * 1024 * 1024) {
             resolve({ ok: false, reason: 'error' });
             return;
           }
-          resolve({ ok: true, mime: blob.type, name: fileNameFor(blob.type), buffer: ab });
+          resolve({
+            ok: true,
+            mime: blob.type,
+            name: fileNameFor(blob.type),
+            buffer: ab,
+            signature: signature
+          });
         }).catch(function () { resolve({ ok: false, reason: 'error' }); });
       }
 

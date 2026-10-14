@@ -13,6 +13,16 @@
 
   var auto = (typeof window !== 'undefined' && window.SoundSniffAutoListen) || null;
   var api = (typeof window !== 'undefined' && window.SoundSniffRecognize) || null;
+  var sigApi = (typeof window !== 'undefined' && window.SoundSniffSignature) || null;
+
+  // Ses durumu, autoListen'in kendi durumundan AYRI bir anahtarda tutulur.
+  // Aynı nesneyi iki yazici paylasmak onceki bir hatayi geri getirirdi:
+  // birinin sayacini digerinin yazimi ezebilir.
+  var AUDIO_KEY = 'audioState';
+  // Periyodik dogrulama: imza ayni dese bile her N kontrolde bir kez API'ye
+  // sorulur. Yanlis "same" veren bir cift, etkisini en fazla bir sonraki
+  // parcaya kadar gosterir; kotanin kirliligi bu yuzden sinirli kalir.
+  var VERIFY_EVERY = 5;
 
   // ---------- Kurulum ----------
 
@@ -70,6 +80,63 @@
     var a = String((song && song.artist) || '').trim().toLowerCase();
     var t = String((song && song.title) || '').trim().toLowerCase();
     return a + '|' + t;
+  }
+
+  function loadAudioState() {
+    return browser.storage.local.get([AUDIO_KEY]).then(function (d) {
+      var s = (d && d[AUDIO_KEY]) || {};
+      return {
+        signature: s.signature || null,
+        confirmedKey: s.confirmedKey || '',
+        sinceVerify: parseInt(s.sinceVerify, 10) || 0,
+        skipped: parseInt(s.skipped, 10) || 0
+      };
+    }).catch(function () {
+      return { signature: null, confirmedKey: '', sinceVerify: 0, skipped: 0 };
+    });
+  }
+
+  function saveAudioState(s) {
+    return browser.storage.local.set({ audioState: s }).catch(function () {});
+  }
+
+  /* Arka plan döngüsünde tanıma isteğini harcamadan önce soruya bak:
+     bu ses, bir önceki kabul edilmiş kayıttan farklı mı?
+
+     Döner: true -> atla (hiçbir istek gönderilmedi, kota harcanmadı)
+            false -> tanımayı sürdür                                       */
+  function shouldSkipRecognition(signature) {
+    if (!sigApi || !signature) return Promise.resolve(false);
+    return loadAudioState().then(function (st) {
+      if (!st.signature) return false;
+
+      var verdict = sigApi.compare(st.signature, signature);
+      var since = st.sinceVerify + 1;
+      var due = since >= VERIFY_EVERY;
+
+      // Her durumda referans imzayı tazele: ayni parça penceresi kaydıkça
+      // karşılaştırma tabanı da ilerlesin.
+      st.signature = signature;
+
+      if (verdict === 'same' && !due) {
+        st.sinceVerify = since;
+        st.skipped = (st.skipped + 1) || 1;
+        return saveAudioState(st).then(function () { return true; });
+      }
+
+      st.sinceVerify = 0;
+      return saveAudioState(st).then(function () { return false; });
+    }).catch(function () { return false; });
+  }
+
+  function rememberAudio(signature, key) {
+    if (!sigApi || !signature) return Promise.resolve();
+    return loadAudioState().then(function (st) {
+      st.signature = signature;
+      st.confirmedKey = key || '';
+      st.sinceVerify = 0;
+      return saveAudioState(st);
+    }).catch(function () {});
   }
 
   function resolveAuto(id, value) {
@@ -250,8 +317,29 @@
       return;
     }
 
-    countRequest();
+    // Arka plan döngüsünde ilk kapı yerel imza: ses aynıysa hiçbir istek
+    // gönderilmez. Elle yapılan dinlemede bu eleme uygulanmaz — kullanıcı
+    // düğmeye bastığında istek göndermek onun niyetidir.
+    if (autoId && msg.signature) {
+      shouldSkipRecognition(msg.signature).then(function (skip) {
+        if (skip) {
+          resolveAuto(autoId, { ok: true, matched: false, sameAudio: true });
+          return;
+        }
+        countRequest();
+        runRecognition(blob, msg, autoId);
+      }).catch(function () {
+        countRequest();
+        runRecognition(blob, msg, autoId);
+      });
+      return;
+    }
 
+    countRequest();
+    runRecognition(blob, msg, autoId);
+  }
+
+  function runRecognition(blob, msg, autoId) {
     api.recognizeBlob(blob, msg.name || 'capture.webm').then(function (r) {
       if (!r || !r.matched) {
         if (autoId) resolveAuto(autoId, { ok: true, matched: false, limited: !!r.limited });
@@ -263,12 +351,14 @@
 
       // Aynı şarkı hâlâ çalıyor: geçmişe yeniden yazma, popup'ı zıplatma.
       if (autoId && msg.expectedKey && key === msg.expectedKey) {
+        rememberAudio(msg.signature, key);
         resolveAuto(autoId, { ok: true, matched: true, unchanged: true, key: key, song: r.song });
         return;
       }
 
       var backend = r.backend === 'SongFinder' ? 'songfinder' : 'audd';
       saveMatch(r.song, backend, !!autoId);
+      rememberAudio(msg.signature, key);
       if (autoId) {
         resolveAuto(autoId, { ok: true, matched: true, unchanged: false, key: key, song: r.song, backend: backend });
       }
