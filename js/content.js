@@ -14,26 +14,38 @@
     if (busy) return Promise.resolve({ ok: false, reason: 'busy' });
     busy = true;
     var dur = Math.min(MAX_MS, Math.max(MIN_MS, Number(msg.durationMs) || 10000));
+    // Sürekli dinleme istekleri bir kimlik taşır: background sonucu popup
+    // kapalıyken de eşleştirebilsin diye yanıt bekleyemez.
+    var reqId = (msg.id && typeof msg.id === 'string') ? msg.id : '';
+    // Beklenen şarkı: aynı şarkı hâlâ çalışıyorsa geçmişe tekrar yazılmasın.
+    var expected = (msg.expectedKey && typeof msg.expectedKey === 'string') ? msg.expectedKey : '';
     // Hemen ack dön, kayıt bitince ayrı mesajla gönder (uzun ömürlü kanal riski yok)
     capture(dur).then(function (res) {
       busy = false;
       if (res && res.ok) {
-        browser.runtime.sendMessage({
+        var audio = {
           cmd: 'soundsniff-audio',
           mime: res.mime,
           name: res.name,
           buffer: res.buffer
-        }).catch(function () { /* popup/background kapalıysa sorun değil */ });
+        };
+        if (reqId) { audio.id = reqId; audio.expectedKey = expected; }
+        browser.runtime.sendMessage(audio).catch(function () { /* popup/background kapalıysa sorun değil */ });
       } else {
-        browser.runtime.sendMessage({
+        var failed = {
           cmd: 'soundsniff-capture-failed',
           reason: (res && res.reason) || 'unknown'
-        }).catch(function () {});
+        };
+        if (reqId) failed.id = reqId;
+        browser.runtime.sendMessage(failed).catch(function () {});
       }
     }).catch(function () {
       busy = false;
-      browser.runtime.sendMessage({ cmd: 'soundsniff-capture-failed', reason: 'error' })
-        .catch(function () {});
+      browser.runtime.sendMessage({
+        cmd: 'soundsniff-capture-failed',
+        reason: 'error',
+        id: reqId || undefined
+      }).catch(function () {});
     });
     return Promise.resolve({ ok: true, started: true });
   });

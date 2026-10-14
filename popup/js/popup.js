@@ -10,6 +10,8 @@
   var app = $('app');
   var btnListen = $('btn-listen');
   var btnMic = $('btn-mic');
+  var btnAuto = $('btn-auto');
+  var btnAutoStop = $('btn-auto-stop');
   var btnHistory = $('btn-history');
   var btnSettings = $('btn-settings');
   var btnBackHistory = $('btn-back-history');
@@ -23,6 +25,9 @@
 
   var statusText = $('status-text');
   var statusDot = $('status-dot');
+  var autoBar = $('auto-bar');
+  var autoTitle = $('auto-title');
+  var autoSub = $('auto-sub');
   var disc = $('disc');
   var discImg = $('disc-img');
   var discFallback = $('disc-fallback');
@@ -38,11 +43,15 @@
   var recordingLength = $('recording-length');
   var recordingLengthValue = $('recording-length-value');
   var autostartCheckbox = $('autostart-checkbox');
+  var autolistenCheckbox = $('autolisten-checkbox');
+  var autolistenBudget = $('autolisten-budget');
+  var autolistenBudgetValue = $('autolisten-budget-value');
+  var autolistenBudgetNote = $('autolisten-budget-note');
   var historyList = $('history-list');
   var settingsSaved = $('settings-saved');
   var languageSelect = $('language-select');
   var aboutText = $('about-text');
-  var APP_VERSION = '1.6.1';
+  var APP_VERSION = '1.7.0';
 
   function t(key, vars) {
     try {
@@ -57,10 +66,12 @@
   var captureTimer = null;
   var errorTimer = null;
   var history = [];
+  var autoState = { enabled: false, status: 'off', reason: '', used: 0, budget: 10, found: 0, artist: '', title: '' };
+  var budgetDirty = false;
 
   // ---------- Init ----------
   function init() {
-    browser.storage.local.get(['history', 'apiToken', 'recordingLength', 'lastResult', 'lang', 'autoStart'])
+    browser.storage.local.get(['history', 'apiToken', 'recordingLength', 'lastResult', 'lang', 'autoStart', 'autoListen'])
       .then(function (data) {
         applyLang(data.lang || 'en');
         if (Array.isArray(data.history)) history = data.history.slice(0, MAX_HISTORY);
@@ -75,15 +86,17 @@
         // arka planda asla kendiliğinden kayıt yapılmaz.
         var autoStart = (typeof data.autoStart === 'undefined') ? true : !!data.autoStart;
         if (autostartCheckbox) autostartCheckbox.checked = autoStart;
+        renderAuto(normalizeAuto(data.autoListen));
         renderHistory();
         // Arka planda biten iş varsa göster (örn. popup kapanmışken biten tanıma).
         // Bu durumda kota yakmamak ve sonucu ezmemek için oto-başlatma yapma.
         if (data.lastResult && data.lastResult.song &&
             (Date.now() - Number(data.lastResult.at || 0)) < 10 * 60 * 1000) {
           showResult(data.lastResult.song, backendLabel(data.lastResult.backend));
-        } else if (autoStart) {
+        } else if (autoStart && !autoState.enabled) {
           // Shazam/LibreZ Modu: popup açılır açılmaz tek seferlik oto-dinleme.
           // Popup her açılışta en fazla 1 istek atar; tekrar döngüsü yoktur.
+          // Sürekli dinleme açıksa o zaten çalışıyor, ikinci istek atma.
           setTimeout(function () {
             if (uiState === 'idle' && !capturing) startCapture();
           }, 150);
@@ -105,6 +118,7 @@
     if (aboutText) aboutText.textContent = t('about', { v: APP_VERSION });
     // O anki durum metnini yeni dilde tazele
     refreshStatusText();
+    renderAuto(autoState);
     renderHistory();
   }
 
@@ -135,6 +149,101 @@
     saveSettings();
     showScreen(screenMain);
   });
+
+  // ---------- Sürekli dinleme (Shazam tarzı arka plan döngüsü) ----------
+
+var PAUSE_KEYS = {
+    'quota': 'auto_p_quota',
+    'no-media': 'auto_p_no_media',
+    'no-match': 'auto_p_no_match',
+    'limited': 'auto_p_limited'
+  };
+
+  function normalizeAuto(raw) {
+    var s = (raw && typeof raw === 'object') ? raw : {};
+    var b = parseInt(s.budget, 10);
+    return {
+      enabled: !!s.enabled,
+      status: s.status || 'off',
+      reason: s.reason || '',
+      used: parseInt(s.used, 10) || 0,
+      budget: (b >= 3 && b <= 60) ? b : 10,
+      found: parseInt(s.found, 10) || 0,
+      artist: String(s.artist || ''),
+      title: String(s.title || '')
+    };
+  }
+
+  function renderAuto(s) {
+    autoState = normalizeAuto(s);
+
+    if (autolistenCheckbox) autolistenCheckbox.checked = autoState.enabled;
+    if (btnAuto) btnAuto.classList.toggle('on', autoState.enabled);
+    // Kullanıcı kaydırıcıyı sürerken her durum yayınında değeri geri alma.
+    if (autolistenBudget && !budgetDirty &&
+        parseInt(autolistenBudget.value, 10) !== autoState.budget) {
+      autolistenBudget.value = String(autoState.budget);
+    }
+    if (autolistenBudgetValue) autolistenBudgetValue.textContent = String(autoState.budget);
+    if (autolistenBudgetNote) {
+      autolistenBudgetNote.textContent = t('auto_budget_val', { used: autoState.used, max: autoState.budget });
+    }
+
+    if (!autoState.enabled) { autoBar.classList.add('hidden'); return; }
+    autoBar.classList.remove('hidden');
+
+    var paused = autoState.status === 'paused';
+    autoBar.classList.toggle('paused', paused);
+
+    var title = t('auto_title');
+    if (autoState.found > 0) title += ' · ' + t('auto_found_today', { n: autoState.found });
+    autoTitle.textContent = title;
+
+    if (paused) {
+      autoSub.textContent = t(PAUSE_KEYS[autoState.reason] || 'auto_p_no_match');
+    } else if (autoState.artist && autoState.title) {
+      autoSub.textContent = autoState.artist + ' — ' + autoState.title;
+    } else if (autoState.reason === 'stable') {
+      autoSub.textContent = t('auto_stable');
+    } else {
+      autoSub.textContent = t('auto_searching');
+    }
+  }
+
+  function sendAuto(cmd) {
+    try {
+      browser.runtime.sendMessage({ cmd: cmd }).catch(function () {});
+    } catch (e) {}
+  }
+
+  function sendAutoBudget(value) {
+    try {
+      browser.runtime.sendMessage({ cmd: 'auto-listen-budget', value: value }).catch(function () {});
+    } catch (e) {}
+  }
+
+  if (autolistenBudget) {
+    autolistenBudget.addEventListener('input', function () {
+      budgetDirty = true;
+      if (autolistenBudgetValue) autolistenBudgetValue.textContent = this.value;
+      if (autolistenBudgetNote) {
+        autolistenBudgetNote.textContent = t('auto_budget_val', { used: autoState.used, max: this.value });
+      }
+    });
+    autolistenBudget.addEventListener('change', function () {
+      budgetDirty = false;
+      sendAutoBudget(parseInt(this.value, 10));
+    });
+  }
+
+  btnAuto.addEventListener('click', function () { sendAuto('auto-listen-toggle'); });
+  btnAutoStop.addEventListener('click', function () { sendAuto('auto-listen-stop'); });
+
+  if (autolistenCheckbox) {
+    autolistenCheckbox.addEventListener('change', function () {
+      sendAuto(this.checked ? 'auto-listen-start' : 'auto-listen-stop');
+    });
+  }
 
   // ---------- Settings ----------
   recordingLength.addEventListener('input', function () {
@@ -297,6 +406,8 @@
     } else if (msg.cmd === 'error') {
       capturing = false;
       setState('error', { status: msg.key ? t('err_' + msg.key) : (msg.text || t('status_error')) });
+    } else if (msg.cmd === 'auto-listen-state') {
+      renderAuto(msg.state);
     } else if (msg.cmd === 'mic-result') {
       refreshHistoryFromStorage();
     }

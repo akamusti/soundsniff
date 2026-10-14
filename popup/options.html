@@ -236,6 +236,26 @@
   </div>
 
   <div class="setting-group">
+    <label for="autolisten"><span data-i18n="auto_label">Continuous listening</span></label>
+    <p class="desc" data-i18n="auto_desc">Keep identifying in the background and switch automatically when the track changes, Shazam-style.</p>
+    <label style="display:flex;align-items:center;gap:10px;font-size:13px;text-transform:none;letter-spacing:0;cursor:pointer;position:relative;">
+      <input type="checkbox" id="autolisten" class="opt-switch-input" />
+      <span class="opt-switch-track" aria-hidden="true"><span class="opt-switch-thumb"></span></span>
+      <span data-i18n="auto_label">Continuous listening</span>
+    </label>
+  </div>
+
+  <div class="setting-group">
+    <label for="autolisten-budget"><span data-i18n="auto_budget_label">Daily recognition limit</span></label>
+    <p class="desc" data-i18n="auto_budget_desc">Continuous listening stops after this many recognitions per day. Manual listening is never blocked by it.</p>
+    <div class="range-row">
+      <input type="range" id="autolisten-budget" min="3" max="60" value="10" step="1" />
+      <span class="range-val" id="autolisten-budget-val">10</span>
+    </div>
+    <p class="desc" id="autolisten-budget-note" style="margin:8px 0 0;">0 of 10 used today</p>
+  </div>
+
+  <div class="setting-group">
     <button id="save" data-i18n="opt_save">Save Settings</button>
   </div>
 

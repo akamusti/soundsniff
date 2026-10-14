@@ -105,6 +105,10 @@
 
   function recognize(blob) {
     setState('working', t('rec_working'));
+    // Mikrofon sekmesi kendi isteğini kendi atar, ama günlük kotadan da geçmeli.
+    try {
+      browser.runtime.sendMessage({ cmd: 'mic-request' }).catch(function () {});
+    } catch (e) {}
     var api = window.SoundSniffRecognize;
     if (!api) {
       setState('error', t('rec_noservice'));

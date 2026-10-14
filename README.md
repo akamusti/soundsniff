@@ -20,6 +20,24 @@ Shazam-style music recognition add-on for Firefox (and forks). Finds the song pl
 - Results are kept in History (50 entries).
 - Default language is English; switch to Turkish in Settings.
 
+## Continuous listening (optional)
+
+Shazam's defining behaviour: start once, and it keeps identifying in the
+background and switches by itself when the track changes. SoundSniff can do the
+same.
+
+- Turn it on with the loop button next to the microphone, or in Settings.
+- **Off by default.** It records in the background only while you have it on.
+- It re-checks roughly every 20–45 seconds. If the same track comes back it stays
+  quiet and keeps watching; when a new track appears it is added to History
+  immediately.
+- It pauses itself when there is no music in the tab, when nothing matches
+  several times in a row, or when the recognition service rate-limits us.
+- Every check costs one recognition from your daily quota, so it stops by itself
+  at the limit you set in Settings → "Daily recognition limit" (default 10).
+  Manual listening is never blocked by that limit.
+- Stop it at any time with the Stop button in the popup.
+
 ## How it works
 
 1. Recognizes via **AudD** (free quota included, no key needed).
@@ -29,6 +47,12 @@ Shazam-style music recognition add-on for Firefox (and forks). Finds the song pl
 ## Privacy
 
 - Audio is sent only for recognition, never stored.
-- Auto-listen runs only after you click the toolbar button; never records in the background.
+- Auto-listen on open runs only after you click the toolbar button.
+- Continuous listening is opt-in and is the **only** mode that records without
+  an open popup. While it is on, a short sample of the active tab is captured
+  every 20–45 seconds and sent to AudD and SongFinder for recognition. It stops
+  on its own at the daily limit, and one click turns it off.
 - No telemetry, no accounts.
-- Least privilege: `storage`, `activeTab` and `scripting` only.
+- Least privilege: `storage`, `activeTab`, `scripting` and `alarms` only. `alarms`
+  exists so the continuous loop can survive Firefox suspending the background
+  page; it schedules nothing beyond its own re-checks.

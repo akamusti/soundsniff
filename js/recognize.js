@@ -70,12 +70,15 @@
     });
   }
 
+  /* limited=true dönerken tanıma yapılmadı demektir: servis 429 verdi.
+     Çağıran taraf (özellikle sürekli dinleme döngüsü) bunu "eşleşme yok"
+     ile karıştırmamalı; kota dolduğunda duraklamalı. */
   function recognizeBlob(blob, fileName) {
     return recognizeWithAudd(blob, fileName).then(function (r) {
       if (r.matched) return { matched: true, song: r.song, backend: 'AudD' };
       return recognizeWithSongFinder(blob, fileName).then(function (r2) {
         if (r2.matched) return { matched: true, song: r2.song, backend: 'SongFinder' };
-        return { matched: false };
+        return { matched: false, limited: !!r2.limited };
       });
     });
   }

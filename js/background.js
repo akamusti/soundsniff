@@ -1,9 +1,20 @@
 /* SoundSniff background — sekme yakalamayı yönetir, tanımayı yapar,
-   sonucu storage + popup'a iletir. */
+   sonucu storage + popup'a iletir. Sürekli dinleme döngüsünü de besler. */
 (function () {
   'use strict';
 
   var MAX_HISTORY = 50;
+  var MAX_AUDIO_BYTES = 8 * 1024 * 1024;
+
+  // Otomatik (arka plan) yakalamalar için bekleyen çözümleyiciler.
+  // Popup kapalıyken de sonucu alabilmek için mesaj yanıtı beklenmiyor,
+  // kimliğe göre eşleştiriliyor.
+  var pendingAuto = {};
+
+  var auto = (typeof window !== 'undefined' && window.SoundSniffAutoListen) || null;
+  var api = (typeof window !== 'undefined' && window.SoundSniffRecognize) || null;
+
+  // ---------- Kurulum ----------
 
   browser.runtime.onInstalled.addListener(function () {
     browser.storage.local.get(['history', 'recordingLength', 'autoStart']).then(function (data) {
@@ -18,10 +29,100 @@
     });
   });
 
+  // Tarayıcı yeniden başladığında açık kalmış sürekli dinlemeyi canlandır.
+  browser.runtime.onStartup.addListener(function () {
+    if (!auto) return;
+    auto.getState().then(function (s) {
+      if (s.enabled) auto.start();
+    }).catch(function () {});
+  });
+
+  if (auto) {
+    auto.init({
+      getDurationSec: function () { return getDurationSec(); },
+      capture: function (secs, expectedKey) { return captureForAuto(secs, expectedKey); },
+      onNewTrack: function (song, backend) {
+        notify({ cmd: 'result', song: song, backend: backend });
+      }
+    });
+  }
+
+  // ---------- Yardımcılar ----------
+
+  function notify(payload) {
+    try {
+      browser.runtime.sendMessage(payload).catch(function () {});
+    } catch (e) { /* popup kapalı olabilir */ }
+  }
+
+  function getDurationSec() {
+    return browser.storage.local.get(['recordingLength']).then(function (d) {
+      var len = parseInt(d.recordingLength, 10);
+      return (len >= 5 && len <= 30) ? len : 10;
+    }).catch(function () { return 10; });
+  }
+
+  function countRequest() {
+    if (auto) auto.bumpRequest(1);
+  }
+
+  function songKey(song) {
+    var a = String((song && song.artist) || '').trim().toLowerCase();
+    var t = String((song && song.title) || '').trim().toLowerCase();
+    return a + '|' + t;
+  }
+
+  function resolveAuto(id, value) {
+    if (!id || typeof id !== 'string') return;
+    var fn = pendingAuto[id];
+    if (!fn) return;
+    fn(value);
+  }
+
+  function waitForAuto(id, timeoutMs) {
+    return new Promise(function (resolve) {
+      var done = false;
+      var timer = setTimeout(function () {
+        finish({ ok: false, reason: 'error' });
+      }, timeoutMs);
+      function finish(value) {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        delete pendingAuto[id];
+        resolve(value);
+      }
+      pendingAuto[id] = finish;
+    });
+  }
+
+  // ---------- Mesaj yönlendirme ----------
+
   browser.runtime.onMessage.addListener(function (msg, sender) {
     if (!msg || !msg.cmd) return undefined;
     if (msg.cmd === 'capture-tab') {
       handleCaptureTab(Number(msg.durationSec) || 10);
+      return undefined;
+    }
+    if (msg.cmd === 'auto-listen-toggle' && auto) {
+      auto.toggle();
+      return undefined;
+    }
+    if (msg.cmd === 'auto-listen-start' && auto) {
+      auto.start();
+      return undefined;
+    }
+    if (msg.cmd === 'auto-listen-stop' && auto) {
+      auto.stop();
+      return undefined;
+    }
+    if (msg.cmd === 'auto-listen-budget' && auto) {
+      auto.setBudget(msg.value);
+      return undefined;
+    }
+    if (msg.cmd === 'mic-request') {
+      // Mikrofon sekmesi kendi tanımasını yapar ama kotadan geçer.
+      countRequest();
       return undefined;
     }
     if (msg.cmd === 'soundsniff-audio' && sender && sender.tab) {
@@ -29,17 +130,14 @@
       return undefined;
     }
     if (msg.cmd === 'soundsniff-capture-failed' && sender && sender.tab) {
+      resolveAuto(msg.id, { ok: false, reason: msg.reason || 'error' });
       notify({ cmd: 'capture-unavailable', reason: msg.reason || 'error' });
       return undefined;
     }
     return undefined;
   });
 
-  function notify(payload) {
-    try {
-      browser.runtime.sendMessage(payload).catch(function () {});
-    } catch (e) { /* popup kapalı olabilir */ }
-  }
+  // ---------- Elle (popup) yakalama ----------
 
   function handleCaptureTab(durationSec) {
     var secs = Math.min(30, Math.max(5, durationSec));
@@ -63,61 +161,125 @@
     });
   }
 
-  function sendCapture(tabId, secs) {
-    return browser.tabs.sendMessage(tabId, {
-      cmd: 'soundsniff-capture',
-      durationMs: secs * 1000
-    }).then(function (ack) {
+  function sendCapture(tabId, secs, id, expectedKey) {
+    var payload = { cmd: 'soundsniff-capture', durationMs: secs * 1000 };
+    if (id) {
+      payload.id = id;
+      payload.expectedKey = expectedKey || '';
+    }
+    return browser.tabs.sendMessage(tabId, payload).then(function (ack) {
       if (!ack || !ack.started) throw new Error('no-ack');
-      notify({ cmd: 'capture-started' });
+      if (!id) notify({ cmd: 'capture-started' });
     });
   }
 
-  function injectAndRetry(tabId, secs) {
+  function injectAndRetry(tabId, secs, id, expectedKey) {
     if (!browser.scripting || !browser.scripting.executeScript) {
-      notify({ cmd: 'capture-unavailable', reason: 'reload' });
+      if (id) resolveAuto(id, { ok: false, reason: 'reload' });
+      else notify({ cmd: 'capture-unavailable', reason: 'reload' });
       return;
     }
     browser.scripting.executeScript({
       target: { tabId: tabId },
       files: ['js/content.js']
     }).then(function () {
-      return sendCapture(tabId, secs);
+      return sendCapture(tabId, secs, id, expectedKey);
     }).catch(function () {
-      notify({ cmd: 'capture-unavailable', reason: 'reload' });
+      if (id) resolveAuto(id, { ok: false, reason: 'reload' });
+      else notify({ cmd: 'capture-unavailable', reason: 'reload' });
     });
   }
 
+  // ---------- Otomatik (sürekli dinleme) yakalama ----------
+
+  function captureForAuto(secs, expectedKey) {
+    return browser.tabs.query({ active: true, currentWindow: true }).then(function (tabs) {
+      var tab = tabs && tabs[0];
+      if (!tab || typeof tab.id === 'undefined') return { ok: false, reason: 'no-tab' };
+
+      var url = tab.url || '';
+      // Arka planda 'tabs' izni yok; URL görünmüyorsa denemeyi yap,
+      // kararı content script versin (medya yoksa 'no-media' döner).
+      if (url && url.indexOf('http://') !== 0 && url.indexOf('https://') !== 0) {
+        return { ok: false, reason: 'restricted' };
+      }
+
+      var id = 'auto-' + Date.now() + '-' + Math.floor(Math.random() * 1e6);
+      var timeout = Math.min(90000, (secs * 1000) + 25000);
+      var waiter = waitForAuto(id, timeout);
+
+      return sendCapture(tab.id, secs, id, expectedKey).catch(function () {
+        // Content script enjekte edilmemiş olabilir.
+        injectAndRetry(tab.id, secs, id, expectedKey);
+      }).then(function () {
+        // waiter kendi zaman aşımıyla daima çözülür.
+        return waiter;
+      }).catch(function () {
+        resolveAuto(id, { ok: false, reason: 'error' });
+        return { ok: false, reason: 'error' };
+      });
+    }).catch(function () {
+      return { ok: false, reason: 'no-tab' };
+    });
+  }
+
+  // ---------- Tanıma ----------
+
   function handleAudio(msg) {
+    var autoId = (msg.id && typeof msg.id === 'string') ? msg.id : '';
     var buf = msg.buffer;
-    if (!buf || !buf.byteLength || buf.byteLength > 8 * 1024 * 1024) {
-      notify({ cmd: 'error', key: 'capture' });
+    if (!buf || !buf.byteLength || buf.byteLength > MAX_AUDIO_BYTES) {
+      if (autoId) resolveAuto(autoId, { ok: false, reason: 'error' });
+      else notify({ cmd: 'error', key: 'capture' });
       return;
     }
-    notify({ cmd: 'recognizing' });
+    if (!autoId) notify({ cmd: 'recognizing' });
+
     var blob;
     try {
       blob = new Blob([buf], { type: msg.mime || 'audio/webm' });
     } catch (e) {
-      notify({ cmd: 'error', key: 'capture' });
+      if (autoId) resolveAuto(autoId, { ok: false, reason: 'error' });
+      else notify({ cmd: 'error', key: 'capture' });
       return;
     }
-    var api = (typeof window !== 'undefined' && window.SoundSniffRecognize) || null;
+
     if (!api) {
-      notify({ cmd: 'error', key: 'service' });
+      if (autoId) resolveAuto(autoId, { ok: false, reason: 'error' });
+      else notify({ cmd: 'error', key: 'service' });
       return;
     }
+
+    countRequest();
+
     api.recognizeBlob(blob, msg.name || 'capture.webm').then(function (r) {
-      if (r.matched) {
-        saveMatch(r.song, r.backend === 'SongFinder' ? 'songfinder' : 'audd');
-      } else {
-        notify({ cmd: 'no-result' });
+      if (!r || !r.matched) {
+        if (autoId) resolveAuto(autoId, { ok: true, matched: false, limited: !!r.limited });
+        else notify({ cmd: 'no-result' });
+        return;
+      }
+
+      var key = songKey(r.song);
+
+      // Aynı şarkı hâlâ çalıyor: geçmişe yeniden yazma, popup'ı zıplatma.
+      if (autoId && msg.expectedKey && key === msg.expectedKey) {
+        resolveAuto(autoId, { ok: true, matched: true, unchanged: true, key: key, song: r.song });
+        return;
+      }
+
+      var backend = r.backend === 'SongFinder' ? 'songfinder' : 'audd';
+      saveMatch(r.song, backend, !!autoId);
+      if (autoId) {
+        resolveAuto(autoId, { ok: true, matched: true, unchanged: false, key: key, song: r.song, backend: backend });
       }
     }).catch(function (err) {
       console.error('SoundSniff recognize error:', err);
-      notify({ cmd: 'error', key: 'network' });
+      if (autoId) resolveAuto(autoId, { ok: false, reason: 'error' });
+      else notify({ cmd: 'error', key: 'network' });
     });
   }
+
+  // ---------- Geçmiş ----------
 
   function cleanLinks(links, safe) {
     var out = { spotify: '', apple: '', deezer: '', youtube: '' };
@@ -129,8 +291,9 @@
     return out;
   }
 
-  function saveMatch(song, backend) {
-    var api = (typeof window !== 'undefined' && window.SoundSniffRecognize) || null;
+  /* silent=true: otomatik döngüden geldiyse popup'a anlık bildirim gönderme;
+     auto-listen kendi durum yayınını yapar. */
+  function saveMatch(song, backend, silent) {
     var safe = api ? api.isSafeUrl : function () { return false; };
     var entry = {
       artist: String(song.artist || '').slice(0, 200),
@@ -153,10 +316,10 @@
         lastResult: { song: entry, backend: backend, at: Date.now() }
       });
     }).then(function () {
-      notify({ cmd: 'result', song: entry, backend: backend });
+      if (!silent) notify({ cmd: 'result', song: entry, backend: backend });
     }).catch(function (err) {
       console.error('SoundSniff save error:', err);
-      notify({ cmd: 'result', song: entry, backend: backend });
+      if (!silent) notify({ cmd: 'result', song: entry, backend: backend });
     });
   }
 })();

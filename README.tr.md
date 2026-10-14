@@ -20,6 +20,23 @@ Firefox (ve forkları) için Shazam tarzı müzik tanıma eklentisi. Sekmede ça
 - Sonuçlar Geçmiş'te saklanır (50 adet).
 - Varsayılan dil İngilizce; Ayarlar'dan Türkçe'ye geçilebilir.
 
+## Sürekli dinleme (isteğe bağlı)
+
+Shazam'ın ayırt eden davranışı: bir kez başlatırsın, uygulama arka planda
+tanımaya devam eder ve şarkı değişince kendiliğinden geçiş yapar. SoundSniff
+bunu yapabiliyor.
+
+- Mikrofon düğmesinin yanındaki döngü düğmesiyle ya da Ayarlar'dan açılır.
+- **Varsayılan kapalı.** Yalnızca sen açtığında arka planda kayıt yapar.
+- Yaklaşık 20–45 saniyede bir kontrol eder. Aynı şarkı gelirse sessiz kalır ve
+  izlemeye devam eder; yeni şarkı çaldığında anında Geçmiş'e eklenir.
+- Sekmede müzik yoksa, üst üste eşleşme bulunamazsa ya da tanıma servisi istek
+  sınırına takılırsa kendiliğinden duraklar.
+- Her kontrol günlük kotandan bir tanıma harcar; bu yüzden Ayarlar →
+  "Günlük tanıma sınırı" değerinde (varsayılan 10) kendiliğinden durur. Elle
+  yapılan dinleme bu sınırla asla engellenmez.
+- İstediğin an popup'daki Durdur düğmesiyle kapatabilirsin.
+
 ## Nasıl çalışır
 
 1. **AudD** ile tanır (anahtarsız ücretsiz kota dahil).
@@ -29,6 +46,13 @@ Firefox (ve forkları) için Shazam tarzı müzik tanıma eklentisi. Sekmede ça
 ## Gizlilik
 
 - Ses yalnızca tanıma için gönderilir, saklanmaz.
-- Otomatik dinleme yalnızca araç çubuğuna bastığında çalışır; arka planda asla kayıt yapmaz.
+- "Açılınca otomatik dinle" yalnızca araç çubuğuna bastığında çalışır.
+- Sürekli dinleme isteğe bağlıdır ve **popup açık değilken kayıt yapan tek
+  moddur**. Açıkken, aktif sekmeden 20–45 saniyede bir kısa bir örnek alınıp
+  tanıma için AudD ve SongFinder'a gönderilir. Günlük sınıra ulaşınca kendiliğinden
+  durur ve tek tıkla kapatılır.
 - Telemetri yok, hesap yok.
-- En dar izinler: yalnızca `storage`, `activeTab` ve `scripting`.
+- En dar izinler: yalnızca `storage`, `activeTab`, `scripting` ve `alarms`.
+  `alarms`, Firefox arka plan sayfasını askıya aldığında sürekli döngünün
+  hayatta kalabilmesi için gerekli; kendi kontrollerinden başka bir şey
+  planlamaz.
