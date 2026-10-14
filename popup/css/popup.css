@@ -8,7 +8,13 @@
        recording-length(-value), autostart-checkbox, settings-saved, about-text
    class: active, show, live, busy, spinning, on, hidden, history-item,
           history-cover, history-info-*, history-delete, link-btn, empty-history,
-           auto-stop, auto-btn, paused, budget-note */
+           auto-stop, auto-btn, paused, budget-note
+
+   Hareket kurali: ayni anda TEK animasyon doner (plak). Status noktasi,
+   esitleme cubuklari ve dugme haleleri sabittir; birine animasyon eklemeden
+   once bu satiri gozden gecir. Süsleme katmani (degrade, dis parlama, agir
+   golge) bilerek kaldirildi: bu proje gercek bir uygulama gibi duruyor,
+   panel gibi degil. */
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -22,11 +28,9 @@
   --faint: #646f88;
   --fox: #e8622c;
   --fox-deep: #c74e1f;
-  --fox-glow: rgba(232, 98, 44, 0.35);
   --amber: #e9a23b;
   --green: #4caf7d;
   --red: #e05c5c;
-  --radius: 16px;
 }
 
 html, body { height: 100%; }
@@ -50,8 +54,7 @@ body {
   height: 100%;
   min-height: 0;
   background:
-    radial-gradient(90% 42% at 50% -6%, rgba(232, 98, 44, 0.13), transparent 65%),
-    radial-gradient(120% 90% at 50% 115%, rgba(0, 0, 0, 0.35), transparent 60%),
+    radial-gradient(120% 60% at 50% -10%, rgba(232, 98, 44, 0.09), transparent 70%),
     var(--ink);
 }
 
@@ -114,14 +117,11 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  margin: 6px 0 0;
-  padding: 4px 10px;
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 1.4px;
-  text-transform: uppercase;
+  margin: 8px 0 0;
+  font-size: 12.5px;
+  font-weight: 600;
   color: var(--faint);
-  max-width: 92%;
+  max-width: 100%;
   flex-shrink: 0;
 }
 
@@ -139,11 +139,11 @@ body {
   flex-shrink: 0;
 }
 
-.status-dot.live { background: var(--fox); animation: dot-pulse 1.4s ease-in-out infinite; }
+.status-dot.live { background: var(--fox); }
 
-.app[data-state="result"] .status-dot { background: var(--green); animation: none; }
+.app[data-state="result"] .status-dot { background: var(--green); }
 .app[data-state="noresult"] .status-dot,
-.app[data-state="error"] .status-dot { background: var(--red); animation: none; }
+.app[data-state="error"] .status-dot { background: var(--red); }
 
 .app[data-state="result"] .status-pill { color: var(--green); }
 .app[data-state="noresult"] .status-pill,
@@ -151,10 +151,6 @@ body {
 .app[data-state="listening"] .status-pill,
 .app[data-state="working"] .status-pill { color: var(--muted); }
 
-@keyframes dot-pulse {
-  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(232, 98, 44, 0.5); }
-  50% { opacity: 0.6; box-shadow: 0 0 0 5px rgba(232, 98, 44, 0); }
-}
 
 /* ---------- Stage: dev kapak, Shazam-benzeri kahraman ---------- */
 .stage {
@@ -178,7 +174,7 @@ body {
     repeating-radial-gradient(circle at 50% 50%, #1a2742 0 2px, #141d31 2px 4px);
   box-shadow:
     0 0 0 1px var(--line),
-    0 18px 44px rgba(0, 0, 0, 0.5);
+    0 6px 18px rgba(0, 0, 0, 0.35);
   overflow: hidden;
   transition: width 0.3s ease, height 0.3s ease, box-shadow 0.3s ease;
 }
@@ -218,9 +214,8 @@ body {
 .app[data-state="listening"] .disc,
 .app[data-state="working"] .disc {
   box-shadow:
-    0 0 0 1px rgba(232, 98, 44, 0.45),
-    0 0 44px var(--fox-glow),
-    0 18px 44px rgba(0, 0, 0, 0.5);
+    0 0 0 1px rgba(232, 98, 44, 0.5),
+    0 6px 18px rgba(0, 0, 0, 0.35);
 }
 
 @keyframes disc-spin { to { transform: rotate(360deg); } }
@@ -273,16 +268,11 @@ body {
   height: 30%;
 }
 
-.eq.on span { animation: eq-bounce 0.9s ease-in-out infinite; }
-.eq.on span:nth-child(2) { animation-delay: 0.15s; }
-.eq.on span:nth-child(3) { animation-delay: 0.3s; }
-.eq.on span:nth-child(4) { animation-delay: 0.45s; }
-.eq.on span:nth-child(5) { animation-delay: 0.6s; }
-
-@keyframes eq-bounce {
-  0%, 100% { height: 25%; }
-  50% { height: 100%; }
-}
+.eq.on span:nth-child(1) { height: 30%; }
+.eq.on span:nth-child(2) { height: 70%; }
+.eq.on span:nth-child(3) { height: 100%; }
+.eq.on span:nth-child(4) { height: 60%; }
+.eq.on span:nth-child(5) { height: 35%; }
 
 /* ---------- Song block: baslik once, Shazam sirasi ---------- */
 .song-block {
@@ -379,7 +369,7 @@ body {
 .link-btn {
   display: inline-block;
   padding: 9px 22px;
-  border-radius: 999px;
+  border-radius: 10px;
   font-size: 13px;
   font-weight: 700;
   text-decoration: none;
@@ -390,10 +380,10 @@ body {
 }
 
 .link-btn.primary {
-  background: linear-gradient(180deg, #ef7a3c, var(--fox-deep));
+  background: var(--fox);
   border: none;
   color: #fff;
-  box-shadow: 0 4px 16px rgba(232, 98, 44, 0.35);
+  box-shadow: none;
 }
 
 .link-btn:hover { filter: brightness(1.1); }
@@ -401,9 +391,9 @@ body {
 .link-btn:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
 
 .retry-btn {
-  margin-top: 10px;
-  padding: 9px 24px;
-  border-radius: 999px;
+  margin-top: 12px;
+  padding: 9px 22px;
+  border-radius: 10px;
   border: 1px solid var(--line);
   background: transparent;
   color: var(--cream);
@@ -436,7 +426,6 @@ body {
   border-radius: 50%;
   background: var(--fox);
   flex-shrink: 0;
-  animation: dot-pulse 1.4s ease-in-out infinite;
 }
 
 .auto-bar.paused {
@@ -458,10 +447,8 @@ body {
 }
 
 .auto-title {
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 1.1px;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
   color: var(--fox);
 }
 
@@ -500,8 +487,7 @@ body {
   padding: 12px 0 18px;
   flex-shrink: 0;
   border-top: 1px solid var(--line);
-  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.22));
-}
+
 
 .controls-row {
   display: flex;
@@ -535,8 +521,7 @@ body {
 .auto-btn.on {
   color: #fff;
   border-color: transparent;
-  background: linear-gradient(180deg, #ef7a3c, var(--fox-deep));
-  box-shadow: 0 3px 12px rgba(232, 98, 44, 0.35);
+  background: var(--fox);
 }
 
 .auto-btn.on:hover { color: #fff; }
@@ -550,13 +535,13 @@ body {
   border-radius: 50%;
   border: none;
   cursor: pointer;
-  background: linear-gradient(180deg, #f2813f, var(--fox-deep));
+  background: var(--fox);
   color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 10px 30px rgba(232, 98, 44, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3);
-  transition: transform 0.12s ease, box-shadow 0.2s ease, background 0.2s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  transition: transform 0.12s ease, background 0.2s ease;
   outline: none;
 }
 
@@ -565,28 +550,14 @@ body {
 .listen-btn:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
 
 .listen-btn.busy {
-  background: linear-gradient(180deg, #3a4a6b, #232f4d);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  background: var(--ink-3);
+  color: var(--faint);
+  box-shadow: none;
 }
 
 .listen-btn-inner { position: relative; z-index: 2; display: flex; }
 
-.listen-btn-ring {
-  display: none;
-  position: absolute;
-  inset: 0;
-  border: 2px solid var(--fox);
-  border-radius: 50%;
-  opacity: 0;
-}
 
-.listen-btn.busy .listen-btn-ring { display: block; animation: btn-pulse 1.6s ease-out infinite; }
-.listen-btn.busy .listen-btn-ring.delay { animation-delay: 0.5s; }
-
-@keyframes btn-pulse {
-  0% { transform: scale(1); opacity: 0.55; }
-  100% { transform: scale(1.55); opacity: 0; }
-}
 
 .backend-note { font-size: 11px; color: var(--faint); min-height: 15px; }
 .backend-note:empty { display: none; }
@@ -719,19 +690,17 @@ body {
 .settings-content::-webkit-scrollbar { width: 6px; }
 .settings-content::-webkit-scrollbar-thumb { background: var(--ink-3); border-radius: 3px; }
 
-.setting-group { padding: 15px 0; border-bottom: 1px solid var(--line); }
+.setting-group { padding: 17px 0; }
 .setting-group:last-child { border-bottom: none; }
 
 .setting-label {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 1.1px;
-  text-transform: uppercase;
+  font-size: 12.5px;
+  font-weight: 700;
   color: var(--cream);
-  margin-bottom: 7px;
+  margin-bottom: 8px;
 }
 
 .setting-label::before {
@@ -743,7 +712,7 @@ body {
   flex-shrink: 0;
 }
 
-.setting-label em { text-transform: none; letter-spacing: 0; font-style: normal; color: var(--faint); font-weight: 400; }
+.setting-label em { font-style: normal; color: var(--faint); font-weight: 400; }
 
 .setting-desc { font-size: 12px; color: var(--muted); line-height: 1.55; margin-bottom: 10px; }
 .setting-desc a { color: var(--amber); text-decoration: none; }
@@ -907,9 +876,6 @@ body {
 /* ---------- Hareket hassasiyeti ---------- */
 @media (prefers-reduced-motion: reduce) {
   .disc.spinning,
-  .eq.on span,
-  .status-dot.live,
-  .listen-btn.busy .listen-btn-ring,
   .auto-pulse { animation: none; }
   .screen.active,
   .app[data-state="result"] .song-block,

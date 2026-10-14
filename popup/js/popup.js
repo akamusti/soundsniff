@@ -51,7 +51,7 @@
   var settingsSaved = $('settings-saved');
   var languageSelect = $('language-select');
   var aboutText = $('about-text');
-  var APP_VERSION = '1.7.1';
+  var APP_VERSION = '1.8.0';
 
   function t(key, vars) {
     try {
