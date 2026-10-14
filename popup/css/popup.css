@@ -487,7 +487,7 @@ body {
   padding: 12px 0 18px;
   flex-shrink: 0;
   border-top: 1px solid var(--line);
-
+}
 
 .controls-row {
   display: flex;
@@ -525,8 +525,6 @@ body {
 }
 
 .auto-btn.on:hover { color: #fff; }
-
-.setting-desc.budget-note { margin: 8px 0 0; color: var(--faint); font-size: 11.5px; }
 
 .listen-btn {
   position: relative;
@@ -677,12 +675,15 @@ body {
 .history-delete:hover { color: var(--red); background: rgba(224, 92, 92, 0.12); }
 .history-delete:focus-visible { opacity: 1; outline: 2px solid var(--red); }
 
-/* ---------- Settings ---------- */
+/* ---------- Settings: kart gruplu, tek baslikli ---------- */
 .settings-content {
   flex: 1;
   overflow-y: auto;
   min-height: 0;
-  padding: 2px 18px 18px;
+  padding: 6px 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
   scrollbar-width: thin;
   scrollbar-color: var(--ink-3) transparent;
 }
@@ -690,33 +691,29 @@ body {
 .settings-content::-webkit-scrollbar { width: 6px; }
 .settings-content::-webkit-scrollbar-thumb { background: var(--ink-3); border-radius: 3px; }
 
-.setting-group { padding: 17px 0; }
-.setting-group:last-child { border-bottom: none; }
+.setting-group {
+  background: var(--ink-2);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 13px 14px;
+}
 
 .setting-label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  display: block;
   font-size: 12.5px;
   font-weight: 700;
   color: var(--cream);
-  margin-bottom: 8px;
-}
-
-.setting-label::before {
-  content: "";
-  width: 3px;
-  height: 12px;
-  border-radius: 2px;
-  background: var(--fox);
-  flex-shrink: 0;
+  margin-bottom: 6px;
 }
 
 .setting-label em { font-style: normal; color: var(--faint); font-weight: 400; }
 
 .setting-desc { font-size: 12px; color: var(--muted); line-height: 1.55; margin-bottom: 10px; }
+.setting-desc:last-child { margin-bottom: 0; }
 .setting-desc a { color: var(--amber); text-decoration: none; }
 .setting-desc a:hover { text-decoration: underline; }
+
+.setting-desc.budget-note { margin: 8px 0 0; color: var(--faint); font-size: 11.5px; }
 
 .setting-input {
   width: 100%;
@@ -764,20 +761,20 @@ body {
 .setting-range::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 18px;
-  height: 18px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   background: var(--fox);
-  border: 3px solid #f7d9c6;
+  border: 2px solid #f7d9c6;
   cursor: pointer;
 }
 
 .setting-range::-moz-range-thumb {
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   background: var(--fox);
-  border: 3px solid #f7d9c6;
+  border: 2px solid #f7d9c6;
   cursor: pointer;
 }
 
@@ -790,25 +787,47 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-/* Toggle switch (checkbox gorunumu) */
+/* Toggle satiri: baslik + aciklama solda, anahtar sagda. Tek baslik, tekrar yok. */
 .switch-row {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 13px;
-  color: var(--cream);
+  justify-content: space-between;
+  gap: 12px;
   cursor: pointer;
   user-select: none;
 }
 
-.switch-input {
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
+.switch-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.switch-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--cream);
+}
+
+.switch-desc {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.switch-control {
+  position: relative;
+  flex-shrink: 0;
   width: 40px;
   height: 22px;
+}
+
+.switch-input {
+  position: absolute;
+  inset: 0;
   margin: 0;
   opacity: 0;
   cursor: pointer;
@@ -867,7 +886,12 @@ body {
 .btn-secondary.danger:hover { color: var(--red); border-color: var(--red); }
 .btn-secondary:focus-visible { outline: 2px solid var(--fox); outline-offset: 2px; }
 
-.about { text-align: center; }
+.about {
+  background: none;
+  border: none;
+  text-align: center;
+  padding: 8px 0 0;
+}
 .about-text { font-size: 11px; color: var(--faint); }
 .about-credit { font-size: 11px; color: var(--faint); margin-top: 3px; }
 .about-credit a { color: inherit; text-decoration: none; }

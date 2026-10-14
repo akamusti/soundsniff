@@ -12,8 +12,8 @@
     }
 
     body {
-      background: #0a1628;
-      color: #ffffff;
+      background: #0c1425;
+      color: #f4ede1;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       padding: 24px;
       max-width: 480px;
@@ -22,70 +22,93 @@
 
     h1 {
       font-size: 20px;
-      font-weight: 600;
-      margin-bottom: 24px;
-      background: linear-gradient(135deg, #00d4ff, #00ff88);
+      font-weight: 800;
+      margin-bottom: 20px;
+      background: linear-gradient(135deg, #e8622c, #e9a23b);
       -webkit-background-clip: text;
+      background-clip: text;
       -webkit-text-fill-color: transparent;
     }
 
     .setting-group {
-      margin-bottom: 20px;
+      margin-bottom: 10px;
+      background: #111b30;
+      border: 1px solid rgba(244, 237, 225, 0.09);
+      border-radius: 14px;
+      padding: 13px 14px;
     }
 
     label {
       display: block;
-      font-size: 13px;
-      font-weight: 600;
-      color: #ffffff;
+      font-size: 12.5px;
+      font-weight: 700;
+      color: #f4ede1;
       margin-bottom: 6px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
     }
 
     .desc {
       font-size: 12px;
-      color: #5a6f8a;
-      line-height: 1.5;
+      color: #9aa5bb;
+      line-height: 1.55;
       margin-bottom: 10px;
     }
 
+    .desc:last-child {
+      margin-bottom: 0;
+    }
+
     .desc a {
-      color: #00d4ff;
+      color: #e9a23b;
       text-decoration: none;
     }
 
     input[type="text"] {
       width: 100%;
       padding: 10px 12px;
-      background: #0f1f3d;
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      border-radius: 8px;
-      color: #ffffff;
-      font-size: 13px;
-      font-family: monospace;
+      background: #0c1425;
+      border: 1px solid rgba(244, 237, 225, 0.09);
+      border-radius: 12px;
+      color: #f4ede1;
+      font-size: 12.5px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       outline: none;
     }
 
     input[type="text"]:focus {
-      border-color: #00d4ff;
+      border-color: #e8622c;
+    }
+
+    input[type="text"]::placeholder {
+      color: #646f88;
     }
 
     input[type="range"] {
-      width: 100%;
+      flex: 1;
       -webkit-appearance: none;
+      appearance: none;
       height: 4px;
-      background: #0f1f3d;
+      background: #1a2540;
       border-radius: 2px;
       outline: none;
+      cursor: pointer;
     }
 
     input[type="range"]::-webkit-slider-thumb {
       -webkit-appearance: none;
-      width: 16px;
-      height: 16px;
+      width: 14px;
+      height: 14px;
       border-radius: 50%;
-      background: #00d4ff;
+      background: #e8622c;
+      border: 2px solid #f7d9c6;
+      cursor: pointer;
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #e8622c;
+      border: 2px solid #f7d9c6;
       cursor: pointer;
     }
 
@@ -97,45 +120,87 @@
 
     .range-val {
       font-size: 13px;
-      font-weight: 500;
-      color: #00d4ff;
-      min-width: 32px;
+      font-weight: 800;
+      color: #e9a23b;
+      min-width: 36px;
       text-align: right;
+      font-variant-numeric: tabular-nums;
     }
 
     button {
-      padding: 8px 16px;
-      background: #0f1f3d;
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      border-radius: 8px;
-      color: #8899b3;
-      font-size: 13px;
+      padding: 9px 18px;
+      background: #0c1425;
+      border: 1px solid rgba(244, 237, 225, 0.09);
+      border-radius: 12px;
+      color: #9aa5bb;
+      font-size: 12.5px;
+      font-weight: 700;
       cursor: pointer;
     }
 
     button:hover {
-      background: #1a2d52;
-      color: #ffffff;
+      color: #f4ede1;
+      border-color: #646f88;
     }
 
     select {
       width: 100%;
       padding: 10px 12px;
-      background: #0f1f3d;
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      border-radius: 8px;
-      color: #ffffff;
+      background: #0c1425;
+      border: 1px solid rgba(244, 237, 225, 0.09);
+      border-radius: 12px;
+      color: #f4ede1;
       font-size: 13px;
       outline: none;
+      cursor: pointer;
+    }
+
+    select:focus {
+      border-color: #e8622c;
+    }
+
+    /* Toggle satiri: baslik + aciklama solda, anahtar sagda. Tek baslik, tekrar yok. */
+    .opt-switch-row {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      cursor: pointer;
+      user-select: none;
+      margin: 0;
+    }
+
+    .opt-switch-text {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .opt-switch-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #f4ede1;
+    }
+
+    .opt-switch-desc {
+      font-size: 12px;
+      color: #9aa5bb;
+      line-height: 1.55;
+    }
+
+    .opt-switch-control {
+      position: relative;
+      flex-shrink: 0;
+      width: 40px;
+      height: 22px;
     }
 
     .opt-switch-input {
       position: absolute;
-      left: 0;
-      top: 50%;
-      transform: translateY(-50%);
-      width: 40px;
-      height: 22px;
+      inset: 0;
       margin: 0;
       opacity: 0;
       cursor: pointer;
@@ -146,8 +211,8 @@
       width: 40px;
       height: 22px;
       border-radius: 999px;
-      background: #0f1f3d;
-      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: #1a2540;
+      border: 1px solid rgba(244, 237, 225, 0.09);
       position: relative;
       transition: background 0.2s ease, border-color 0.2s ease;
     }
@@ -159,22 +224,22 @@
       width: 16px;
       height: 16px;
       border-radius: 50%;
-      background: #8899b3;
+      background: #9aa5bb;
       transition: transform 0.2s ease, background 0.2s ease;
     }
 
     .opt-switch-input:checked + .opt-switch-track {
-      background: #00d4ff;
+      background: #e8622c;
       border-color: transparent;
     }
 
     .opt-switch-input:checked + .opt-switch-track .opt-switch-thumb {
       transform: translateX(18px);
-      background: #0a1628;
+      background: #fff;
     }
 
     .opt-switch-input:focus-visible + .opt-switch-track {
-      outline: 2px solid #00d4ff;
+      outline: 2px solid #e9a23b;
       outline-offset: 2px;
     }
 
@@ -182,7 +247,7 @@
       margin-top: 8px;
       text-align: center;
       font-size: 11px;
-      color: #5a6f8a;
+      color: #646f88;
     }
 
     .credit a {
@@ -191,7 +256,7 @@
     }
 
     .credit a:hover {
-      color: #ffffff;
+      color: #f4ede1;
       text-decoration: underline;
     }
   </style>
@@ -226,22 +291,28 @@
   </div>
 
   <div class="setting-group">
-    <label for="autostart"><span data-i18n="autostart_label">Auto-listen on open</span></label>
-    <p class="desc" data-i18n="autostart_desc">Start recognizing as soon as the popup opens. Only runs after you click the toolbar button — never in the background.</p>
-    <label style="display:flex;align-items:center;gap:10px;font-size:13px;text-transform:none;letter-spacing:0;cursor:pointer;position:relative;">
-      <input type="checkbox" id="autostart" checked class="opt-switch-input" />
-      <span class="opt-switch-track" aria-hidden="true"><span class="opt-switch-thumb"></span></span>
-      <span data-i18n="autostart_label">Auto-listen on open</span>
+    <label class="opt-switch-row" for="autostart">
+      <span class="opt-switch-text">
+        <span class="opt-switch-title" data-i18n="autostart_label">Auto-listen on open</span>
+        <span class="opt-switch-desc" data-i18n="autostart_desc">Start recognizing as soon as the popup opens. Only runs after you click the toolbar button — never in the background.</span>
+      </span>
+      <span class="opt-switch-control">
+        <input type="checkbox" id="autostart" checked class="opt-switch-input" />
+        <span class="opt-switch-track" aria-hidden="true"><span class="opt-switch-thumb"></span></span>
+      </span>
     </label>
   </div>
 
   <div class="setting-group">
-    <label for="autolisten"><span data-i18n="auto_label">Continuous listening</span></label>
-    <p class="desc" data-i18n="auto_desc">Keep identifying in the background and switch automatically when the track changes, Shazam-style.</p>
-    <label style="display:flex;align-items:center;gap:10px;font-size:13px;text-transform:none;letter-spacing:0;cursor:pointer;position:relative;">
-      <input type="checkbox" id="autolisten" class="opt-switch-input" />
-      <span class="opt-switch-track" aria-hidden="true"><span class="opt-switch-thumb"></span></span>
-      <span data-i18n="auto_label">Continuous listening</span>
+    <label class="opt-switch-row" for="autolisten">
+      <span class="opt-switch-text">
+        <span class="opt-switch-title" data-i18n="auto_label">Continuous listening</span>
+        <span class="opt-switch-desc" data-i18n="auto_desc">Keep identifying in the background and switch automatically when the track changes, Shazam-style.</span>
+      </span>
+      <span class="opt-switch-control">
+        <input type="checkbox" id="autolisten" class="opt-switch-input" />
+        <span class="opt-switch-track" aria-hidden="true"><span class="opt-switch-thumb"></span></span>
+      </span>
     </label>
   </div>
 
